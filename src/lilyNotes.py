@@ -56,11 +56,15 @@ class Note:
         """
         self.duration += seconds
 
-    def accent(self):
+    def accent(self, stress_type):
         """
         stress this note (add velocity), typically for first beat in bar
         """
-        self.volume += Note.STRESS_INCREMENT / 127
+        if stress_type == 0:
+            self.volume += Note.STRESS_INCREMENT / 127
+        else:
+            self.volume += Note.STRESS_INCREMENT / 127 * 2 / 3  # less
+        self.volume = min(127, self.volume)
 
     def set_in_slur(self):
         """
@@ -181,6 +185,7 @@ class Staff:
         self.last_voice = None
         self.tied_voices_set = set([])
         self.tempo = Staff.TIME_LAPSE
+        self.beat_structure = [0]
         self.staccato_er = 0.875  # fraction of note length to play
         with open(filename, "r") as f:
             for line in f:
@@ -207,6 +212,7 @@ class Staff:
             "tempo": self.process_tempo,
             "tie": self.process_tie,
             "slur": self.process_slur,
+            "time-sig": self.process_timesig,
         }.get(event_type, self.event_not_recognised)(event_time, e)
 
     def event_not_recognised(self, time, e):
@@ -274,6 +280,20 @@ class Staff:
 
         return v
 
+    def process_timesig(self, unused_note_start, e):
+        """
+        a time signature has two arguments, number of notes per bar and
+        note type.  We only care about the number per bar
+        """
+        beats_per_bar = int(e[2])
+        self.beat_structure = {
+            2: [0],
+            3: [0],
+            4: [0],
+            6: [0, 0.5],
+            8: [0, 0.5],
+        }[beats_per_bar]
+
     def process_slur(self, unused_note_start, e):
         """
         a slur applies to the previously seen note
@@ -329,10 +349,15 @@ class Staff:
             seconds=float(note_duration) * self.tempo,
             bar=int(bar_num),
         )
-        if float(bar_pos) == 0:
-            note.accent()  # stress first beat of bar
 
-        self.note_list.append(note)
+        # only Score knows about bar position, but the way to stress a beat
+        # should be an attribute of the voice and we certainly shouldn't be
+        # stressing the second part of a tie
+        for stress_pos in self.beat_structure:
+            if abs(float(bar_pos) - stress_pos) < 1e-6:
+                note.accent(stress_pos)  # stress first beat of bar
+
+        self.note_list.append(note)  # all the notes in the score
         use_voice = self.find_free_voice(note_start, note)
         if use_voice.last_note_tied:
             logging.info(

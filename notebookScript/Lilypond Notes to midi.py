@@ -16,14 +16,14 @@
 # # Midi from Notes file
 #
 # ## Background
-# I have been using Lilypond to transcribe music we've been preparing for online church. It helps where parts need to be shared, fingering added, different harmonies used etc.
+# I have been using Lilypond to transcribe music we've been preparing for online church. It helps where parts need to be shared, fingering added, different harmonies used etc.  
 #
 # Optionally, Lilypond is able to output a midi file, which I can then play through a soft-synthesizer `timidity++` transforming into a `.wav` file, which can be used with `audacity` to create accurate backing tracks.
 #
 # Lilypond includes a sample script, `ly/articulate.ly` which enhances the performance of the music created from these midi files.  It has better support for dynamics, multiple instruments, and embellishments such as trills, ralls etc.  In a different project, I have looked at one way of enhancing midi performance through a mechanism to increase volume on each iteration (think verse) of a piece.
 #
 # ## Objective
-# I wanted to achieve a simple thing, stress on a particular beat of the bar, eg beats 1 and 4 in 6/8 time.
+# I wanted to achieve a simple thing, stress on a particular beat of the bar, eg beats 1 and 4 in 6/8 time.  
 #
 # ## Alternatives considered
 #  1. munging the midi file - by this point in the pipeline, music representation is lost, there are just notes and times to play them
@@ -57,23 +57,27 @@
 # Which I can read and parse with the following python
 
 # %%
-"""
+'''
 process the output from lilypond event-listener.ly
 into a midi file
-"""
+'''
 import importlib
 import logging
 import sys
 
-sys.path.append("..")
+sys.path.append("/home/siddalp/github/lilypondEventsProcessing/src/")
 import lilyNotes
 
+FILE = "../ody-unnamed-staff.notes"
+FILE = "/home/siddalp/audio/P256 St Theodulph/heodulph-unnamed-staff.notes"
 FILE = "../music representation-unnamed-staff.notes"
-# FILE = "/home/siddalp/audio/P256 St Theodulph/heodulph-unnamed-staff.notes"
 
-logging.basicConfig(  # filename='example.log',
-    encoding="utf-8", force=True, level=logging.WARNING
-)
+logging.basicConfig(#filename='example.log', 
+                    encoding='utf-8',
+                    force=True,
+                    level=logging.WARNING
+                    )
+
 
 
 #
@@ -93,46 +97,36 @@ staff.show_notes()
 import mido
 
 midi_file = mido.MidiFile(type=1)
-midi_file.ticks_per_beat = 200  # 384
+midi_file.ticks_per_beat = 200  #384
 print(midi_file.ticks_per_beat)
+
 
 
 def schedule(note, voice, event_list):
     TEMPO_MULTIPLIER = 4
-    on = mido.Message(
-        "note_on",
-        channel=voice.voice_num,
-        note=note.pitch,
-        velocity=int(note.volume * 127),
-    )
-    event_list.insert(on, note.start_time * TEMPO_MULTIPLIER)
-
-    off = mido.Message(
-        "note_off", channel=voice.voice_num, note=note.pitch, velocity=0
-    )
-
-    event_list.insert(off, (note.start_time + note.duration) * TEMPO_MULTIPLIER)
-
+    on = mido.Message('note_on', channel=voice.voice_num, note=note.pitch, velocity=int(note.volume * 127)
+                     )
+    event_list.insert(on, note.start_time*TEMPO_MULTIPLIER)
+    
+    off = mido.Message('note_off', channel=voice.voice_num, note=note.pitch, velocity=0)
+    
+    event_list.insert(off, (note.start_time + note.duration)*TEMPO_MULTIPLIER)
 
 for v in staff.voices:
-    track_events = TimedList()
+    track_events = lilyNotes.TimedList()
     track = mido.MidiTrack()
     for n in v.note_list:
         schedule(n, v, track_events)
-
+        
     last_time = 0
     for ev in track_events:
         time_delta = ev.event_time - last_time
-        new_time = int(
-            mido.second2tick(
-                time_delta, ticks_per_beat=midi_file.ticks_per_beat, tempo=5e5
-            )
-        )
+        new_time = int(mido.second2tick(time_delta, ticks_per_beat= midi_file.ticks_per_beat, tempo=5e5))
         new_note = ev.event.copy(time=new_time)
         print(new_note)
         track.append(new_note)
         last_time = ev.event_time
-
+        
     midi_file.tracks.append(track)
 
 midi_file.save("../try.midi")
