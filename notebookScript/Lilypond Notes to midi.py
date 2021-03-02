@@ -69,8 +69,9 @@ sys.path.append("/home/siddalp/github/lilypondEventsProcessing/src/")
 import lilyNotes
 
 FILE = "../ody-unnamed-staff.notes"
-FILE = "/home/siddalp/audio/P256 St Theodulph/heodulph-unnamed-staff.notes"
 FILE = "../music representation-unnamed-staff.notes"
+FILE = "/home/siddalp/audio/P256 St Theodulph/heodulph-unnamed-staff.notes"
+FILE = "/home/siddalp/audio/Let nothing trouble you/Let nothing trouble you-unnamed-staff.notes"
 
 logging.basicConfig(#filename='example.log', 
                     encoding='utf-8',
@@ -97,31 +98,37 @@ staff.show_notes()
 import mido
 
 midi_file = mido.MidiFile(type=1)
-midi_file.ticks_per_beat = 200  #384
+midi_file.ticks_per_beat = 384
 print(midi_file.ticks_per_beat)
 
 
 
-def schedule(note, voice, event_list):
-    TEMPO_MULTIPLIER = 4
+def schedule(note, voice, event_list, ly_tempo_correction):
+
     on = mido.Message('note_on', channel=voice.voice_num, note=note.pitch, velocity=int(note.volume * 127)
                      )
-    event_list.insert(on, note.start_time*TEMPO_MULTIPLIER)
+    event_list.insert(on, note.start_time*ly_tempo_correction)
     
     off = mido.Message('note_off', channel=voice.voice_num, note=note.pitch, velocity=0)
     
-    event_list.insert(off, (note.start_time + note.duration)*TEMPO_MULTIPLIER)
+    event_list.insert(off, (note.start_time + note.duration)*ly_tempo_correction)
 
+time_multiplier = staff.time_multiplier
+
+track_zero = mido.MidiTrack()
+tempo_msg = mido.MetaMessage('set_tempo', tempo=int(staff.tempo))
+track_zero.append(tempo_msg)
+midi_file.tracks.append(track_zero)
 for v in staff.voices:
     track_events = lilyNotes.TimedList()
     track = mido.MidiTrack()
     for n in v.note_list:
-        schedule(n, v, track_events)
+        schedule(n, v, track_events, time_multiplier)
         
     last_time = 0
     for ev in track_events:
         time_delta = ev.event_time - last_time
-        new_time = int(mido.second2tick(time_delta, ticks_per_beat= midi_file.ticks_per_beat, tempo=5e5))
+        new_time = int(mido.second2tick(time_delta, ticks_per_beat= midi_file.ticks_per_beat, tempo=staff.tempo))
         new_note = ev.event.copy(time=new_time)
         print(new_note)
         track.append(new_note)
@@ -130,5 +137,11 @@ for v in staff.voices:
     midi_file.tracks.append(track)
 
 midi_file.save("../try.midi")
+
+# %%
+print(staff.time_multiplier)
+
+# %%
+print(staff.tempo)
 
 # %%

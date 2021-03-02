@@ -185,6 +185,7 @@ class Staff:
         self.last_voice = None
         self.tied_voices_set = set([])
         self.tempo = Staff.TIME_LAPSE
+        self.time_multiplier = 4
         self.beat_structure = [0]
         self.staccato_er = 0.875  # fraction of note length to play
         with open(filename, "r") as f:
@@ -205,7 +206,7 @@ class Staff:
         to the relevant sub-process via a
         dictionary pretending to be a switch statemetn
         """
-        event_time = float(e[0]) * self.tempo
+        event_time = float(e[0])
         event_type = e[1]
         {
             "note": self.process_note,
@@ -321,11 +322,31 @@ class Staff:
 
     def process_tempo(self, unused_note_start, e):
         """
-        events are always received at a rate of 60 quarter notes per min
-        eighth = 80 gives a tempo number of 640 = 40 per min = 3/2 * time
+        in one sample with a \tempo of 80
+        a quarter note (crotchet) bpm of 80 sends me an event with 320 and I
+        see quarter note durations of 0.25s or 240 per minute so I need to
+        multiply the event time by 3
+
+        in another sample with no tempo, again, quarter notes arrive at 0.25s
+        quantization, but I see no tempo event. This corresponds to lilypond
+        default bpm of 100.  If I set \tempo 4 = 60 the tempo event contains
+        240, at \tempo 100, the event contains 480.
+
+          bpm:   new_tempo:  quarter duration:
+          60       240          1.0s    *4
+          80       320          0.75s   *3
+          120      480          0.5     *2
+
+
+        So tempo value is a frequency and 240 / tempo desired seccond per note
+        multiplier then is 240*4/tempo
+
+        however, to create a midi file, I need to set a tempo in microseconds
+        per quarter note. ie 60/BPM * 1e6 or 240/new_tempo * 1e6
         """
         new_tempo = float(e[2])
-        self.tempo = new_tempo / 425
+        self.time_multiplier = 240 * 4 / new_tempo
+        self.tempo = 240 / new_tempo * 1e6
 
     def process_note(self, note_start, e):
         """
@@ -346,7 +367,7 @@ class Staff:
         note = Note(
             midi_note,
             at=note_start,
-            seconds=float(note_duration) * self.tempo,
+            seconds=float(note_duration),
             bar=int(bar_num),
         )
 
