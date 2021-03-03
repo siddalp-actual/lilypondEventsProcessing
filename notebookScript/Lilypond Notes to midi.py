@@ -77,7 +77,8 @@ logging.basicConfig(#filename='example.log',
                     encoding='utf-8',
                     force=True,
                     level=logging.WARNING
-                    )
+#                    level=logging.DEBUG
+)
 
 
 
@@ -103,19 +104,18 @@ print(midi_file.ticks_per_beat)
 
 
 
-def schedule(note, voice, event_list, ly_tempo_correction):
+def schedule(note, voice, event_list):
 
     on = mido.Message('note_on', channel=voice.voice_num, note=note.pitch, velocity=int(note.volume * 127)
                      )
-    event_list.insert(on, note.start_time*ly_tempo_correction)
+    event_list.insert(on, note.start_time)
     
     off = mido.Message('note_off', channel=voice.voice_num, note=note.pitch, velocity=0)
     
-    event_list.insert(off, (note.start_time + note.duration)*ly_tempo_correction)
-
-time_multiplier = staff.time_multiplier
+    event_list.insert(off, (note.start_time + note.duration))
 
 track_zero = mido.MidiTrack()
+print(f"tempo: {staff.tempo}")
 tempo_msg = mido.MetaMessage('set_tempo', tempo=int(staff.tempo))
 track_zero.append(tempo_msg)
 midi_file.tracks.append(track_zero)
@@ -123,13 +123,13 @@ for v in staff.voices:
     track_events = lilyNotes.TimedList()
     track = mido.MidiTrack()
     for n in v.note_list:
-        schedule(n, v, track_events, time_multiplier)
+        schedule(n, v, track_events)
         
     last_time = 0
     for ev in track_events:
         time_delta = ev.event_time - last_time
-        new_time = int(mido.second2tick(time_delta, ticks_per_beat= midi_file.ticks_per_beat, tempo=staff.tempo))
-        new_note = ev.event.copy(time=new_time)
+        #new_time = int(mido.second2tick(time_delta, ticks_per_beat= midi_file.ticks_per_beat, tempo=staff.tempo))
+        new_note = ev.event.copy(time=int(time_delta))
         print(new_note)
         track.append(new_note)
         last_time = ev.event_time

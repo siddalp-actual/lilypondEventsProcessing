@@ -185,7 +185,6 @@ class Staff:
         self.last_voice = None
         self.tied_voices_set = set([])
         self.tempo = Staff.TIME_LAPSE
-        self.time_multiplier = 4
         self.beat_structure = [0]
         self.staccato_er = 0.875  # fraction of note length to play
         with open(filename, "r") as f:
@@ -345,7 +344,6 @@ class Staff:
         per quarter note. ie 60/BPM * 1e6 or 240/new_tempo * 1e6
         """
         new_tempo = float(e[2])
-        self.time_multiplier = 240 * 4 / new_tempo
         self.tempo = 240 / new_tempo * 1e6
 
     def process_note(self, note_start, e):
@@ -364,10 +362,12 @@ class Staff:
             *unused_origin,
         ) = e
         logging.info(f"found note: {midi_note}")
+        # To help with accuracy, at this point we convert the time and duration
+        # into clicks.  We choose 384 clicks per quarter, ie *4*384
         note = Note(
             midi_note,
-            at=note_start,
-            seconds=float(note_duration),
+            at=note_start * 4 * 384,
+            seconds=float(note_duration) * 4 * 384,
             bar=int(bar_num),
         )
 
@@ -379,12 +379,12 @@ class Staff:
                 note.accent(stress_pos)  # stress first beat of bar
 
         self.note_list.append(note)  # all the notes in the score
-        use_voice = self.find_free_voice(note_start, note)
+        use_voice = self.find_free_voice(note.start_time, note)
         if use_voice.last_note_tied:
             logging.info(
                 f"using tied voice: {use_voice} {use_voice.last_note.pitch}"
             )
-        untied = use_voice.append(note_start, note)
+        untied = use_voice.append(note.start_time, note)
         if untied:
             self.tied_voices_set.remove(use_voice)
         self.last_voice = use_voice  # remember voice for tie
