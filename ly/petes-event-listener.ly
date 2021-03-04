@@ -42,22 +42,14 @@
 staff has an instrument name.  If the staff has no instrument
 name, it uses \"unnamed-staff\" for that part of the filename."
    (let* ((inst-name (ly:context-property context 'instrumentName))
-          (in-file
-              (find
-                ;; look for an arg > 3 chars ending in .ly
-                (lambda (x)
-                    (if (> (string-length x) 3)
-                        (equal? (string-take-right x 3) ".ly")
-                        #f)
-                )
-                (command-line)))
+          (original-file-name (ly:parser-output-name))
         )
 
      (string-concatenate (list
                           ;; filename without .ly part
-                          (if in-file
-                                (string-take in-file (- (string-length in-file) 3))
-                                "fileNameDoesNotContainLY")
+                          (if (string? original-file-name)
+                                original-file-name
+                                "unnamed-file")
                           "-"
                           (if (string? inst-name)
                               inst-name

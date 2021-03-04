@@ -27,28 +27,6 @@ class Note:
     def __repr__(self):
         return f"{self.pitch} {self.duration} {int(self.volume * 127)}"
 
-    def set_volume(self, new_volume):
-        """
-        use the dictionary trick to map a dynamic pp thru ff to a
-        midi velocity
-        same values as scm/midi.scm in lilypond
-        """
-        self.volume = {
-            "sf": 1.00,
-            "fffff": 0.95,
-            "ffff": 0.92,
-            "fff": 0.85,
-            "ff": 0.80,
-            "f": 0.75,
-            "mf": 0.68,
-            "mp": 0.61,
-            "p": 0.55,
-            "pp": 0.49,
-            "ppp": 0.42,
-            "pppp": 0.34,
-            "ppppp": 0.25,
-        }[new_volume]
-
     def extend(self, seconds=0.25):
         """
         when a tie is spotted and we need to extend the previous note
@@ -77,6 +55,12 @@ class Note:
         this note is at the end of a slur so may be stacatto'd
         """
         self.slurred = False
+
+    def set_velocity(self, velocity):
+        """
+        update the note's volume with an explicit midi velocity
+        """
+        self.volume = min(127, velocity)
 
     def staccato(self, factor=0):
         """
@@ -130,6 +114,7 @@ class Voice:
             self.note_list.append(note)
             self.last_note = note
             self.busy_until = note_start_time + note.duration
+            note.set_velocity(self.volume)  # current voice volume
 
         if self.slurred:
             self.last_note.set_in_slur()
@@ -163,6 +148,28 @@ class Voice:
         """
         self.last_note.set_not_slurred()
         self.slurred = False
+
+    def set_volume(self, new_volume):
+        """
+        use the dictionary trick to map a dynamic pp thru ff to a
+        midi velocity
+        same values as scm/midi.scm in lilypond
+        """
+        self.volume = {
+            "sf": 1.00,
+            "fffff": 0.95,
+            "ffff": 0.92,
+            "fff": 0.85,
+            "ff": 0.80,
+            "f": 0.75,
+            "mf": 0.68,
+            "mp": 0.61,
+            "p": 0.55,
+            "pp": 0.49,
+            "ppp": 0.42,
+            "pppp": 0.34,
+            "ppppp": 0.25,
+        }[new_volume]
 
 
 class TieException(Exception):
@@ -213,6 +220,7 @@ class Staff:
             "tie": self.process_tie,
             "slur": self.process_slur,
             "time-sig": self.process_timesig,
+            "dynamic": self.process_dynamic,
         }.get(event_type, self.event_not_recognised)(event_time, e)
 
     def event_not_recognised(self, time, e):
@@ -279,6 +287,26 @@ class Staff:
             return self.create_new_voice()
 
         return v
+
+    def end_hairpin(self, new_volume):
+        """
+        the end of a crescendo or decrescendo may have been reached
+        we can now calculate the volume increase or decrease per beat and
+        apply it to any intervening notes
+        """
+        logging.warning(
+            f"end of dynamic change reached {new_volume}"
+            " *** more code needed ***"
+        )
+
+    def process_dynamic(self, start_time, e):
+        """
+        a dynamic event contains the new volume
+        """
+        new_volume = str(e[2])  # pppp-p,mp,mf,f-ffff
+        for v in self.voices:
+            v.set_volume(new_volume)
+        self.end_hairpin(new_volume)
 
     def process_timesig(self, unused_note_start, e):
         """
@@ -371,22 +399,23 @@ class Staff:
             bar=int(bar_num),
         )
 
-        # only Score knows about bar position, but the way to stress a beat
-        # should be an attribute of the voice and we certainly shouldn't be
-        # stressing the second part of a tie
-        for stress_pos in self.beat_structure:
-            if abs(float(bar_pos) - stress_pos) < 1e-6:
-                note.accent(stress_pos)  # stress first beat of bar
-
         self.note_list.append(note)  # all the notes in the score
         use_voice = self.find_free_voice(note.start_time, note)
         if use_voice.last_note_tied:
             logging.info(
                 f"using tied voice: {use_voice} {use_voice.last_note.pitch}"
             )
-        untied = use_voice.append(note.start_time, note)
-        if untied:
+        voice_untied = use_voice.append(note.start_time, note)
+        if voice_untied:
             self.tied_voices_set.remove(use_voice)
+        else:
+            # only Score knows about bar position, but the way to stress a beat
+            # should be an attribute of the voice and we certainly shouldn't be
+            # stressing the second part of a tie
+            for stress_pos in self.beat_structure:
+                if abs(float(bar_pos) - stress_pos) < 1e-6:
+                    note.accent(stress_pos)  # stress first beat of bar
+
         self.last_voice = use_voice  # remember voice for tie
 
     def show_notes(self):
