@@ -86,9 +86,14 @@ logging.basicConfig(#filename='example.log',
 # Main starts here
 #
 importlib.reload(lilyNotes)
+#import lilyNotes.Staff  ## not needed because module's __init__.ly does it for you
 
-staff = lilyNotes.Staff(FILE)
+staff = lilyNotes.Staff.Staff(FILE)
 
+
+# %%
+#dir(lilyNotes.Note.Note)
+globals()
 
 # %%
 staff.articulate([staff.more_staccato])
@@ -120,7 +125,7 @@ tempo_msg = mido.MetaMessage('set_tempo', tempo=int(staff.tempo))
 track_zero.append(tempo_msg)
 midi_file.tracks.append(track_zero)
 for v in staff.voices:
-    track_events = lilyNotes.TimedList()
+    track_events = lilyNotes.Events.TimedList()
     track = mido.MidiTrack()
     for n in v.note_list:
         schedule(n, v, track_events)
@@ -137,9 +142,6 @@ for v in staff.voices:
     midi_file.tracks.append(track)
 
 midi_file.save("../try.midi")
-
-# %%
-print(staff.time_multiplier)
 
 # %%
 print(staff.tempo)
