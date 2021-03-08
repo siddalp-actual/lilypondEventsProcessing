@@ -6,7 +6,7 @@
 """
 import logging
 import re
-from lilyNotes import note as lily_note, voice
+from lilyNotes import note as lily_note, voice, performer
 
 
 class TieException(Exception):
@@ -31,10 +31,18 @@ class Staff:
         self.tied_voices_set = set([])
         self.tempo = Staff.TIME_LAPSE
         self.beat_structure = [0]
-        self.staccato_er = 0.875  # fraction of note length to play
         with open(filename, "r") as f:
             for line in f:
                 self.process(line)
+
+        for each_voice in self.voices:
+            perf = performer.Performer(each_voice)
+            perf.articulate(
+                [
+                    performer.Performer.more_staccato,
+                    performer.Performer.stress_beats,
+                ]
+            )
 
     def process(self, l):
         """
@@ -61,21 +69,23 @@ class Staff:
             "dynamic": self.process_dynamic,
         }.get(event_type, self.event_not_recognised)(event_time, e)
 
-    def event_not_recognised(self, time, e):
+    @staticmethod
+    def event_not_recognised(time, e):
         """
         flag up an error
         """
         logging.warning(f"event not recognised: {e[1]} at {time}={e[0]}s")
 
     def broadcast_to_current_voices(self, event_time, event_info):
+        click_time = event_time * 4 * Staff.CLICKS_PER_BEAT
         for each_voice in self.voices:
-            each_voice.append(event_time, event_info, event_type="Dynamic")
+            each_voice.append(click_time, event_info, event_type="Dynamic")
 
     def create_new_voice(self):
         """
         add a new voice to this staff
         """
-        new_voice = voice.Voice()
+        new_voice = voice.Voice(self)
         self.voices.append(new_voice)
         if len(self.voices) >= 6:
             raise ValueError
@@ -146,15 +156,17 @@ class Staff:
         a dynamic event contains the new volume
         """
         new_volume = str(e[2])  # pppp-p,mp,mf,f-ffff
+        self.broadcast_to_current_voices(start_time, e)
         for v in self.voices:
             v.set_volume(new_volume)
         self.end_hairpin(new_volume)
 
-    def process_timesig(self, unused_note_start, e):
+    def process_timesig(self, start_time, e):
         """
         a time signature has two arguments, number of notes per bar and
         note type.  We only care about the number per bar
         """
+        self.broadcast_to_current_voices(start_time, e)
         beats_per_bar = int(e[2])
         self.beat_structure = {
             2: [0],
@@ -247,6 +259,7 @@ class Staff:
             at=note_start * 4 * Staff.CLICKS_PER_BEAT,
             clicks=float(note_duration) * 4 * Staff.CLICKS_PER_BEAT,
             bar=int(bar_num),
+            bar_pos=bar_pos,
         )
 
         self.note_list.append(note)  # all the notes in the score
@@ -258,13 +271,6 @@ class Staff:
         voice_untied = use_voice.append(note.start_time, note)
         if voice_untied:
             self.tied_voices_set.remove(use_voice)
-        else:
-            # only Score knows about bar position, but the way to stress a beat
-            # should be an attribute of the voice and we certainly shouldn't be
-            # stressing the second part of a tie
-            for stress_pos in self.beat_structure:
-                if abs(float(bar_pos) - stress_pos) < 1e-6:
-                    note.accent(stress_pos)  # stress first beat of bar
 
         self.last_voice = use_voice  # remember voice for tie
 
@@ -274,18 +280,3 @@ class Staff:
         """
         for n in self.note_list:
             print(repr(n))
-
-    def articulate(self, effects):
-        """
-        articulate the music according to the requested effects if any
-        """
-        for v in self.voices:
-            for n in v.note_list:
-                for e in effects:
-                    e(n.event)  # apply the effect to the note
-
-    def more_staccato(self, note):
-        """
-        a helper function for use with articulate, makes playing less legato
-        """
-        note.staccato(factor=self.staccato_er)

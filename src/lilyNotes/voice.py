@@ -17,8 +17,9 @@ class Voice:
 
     voice_num = 0
 
-    def __init__(self):
+    def __init__(self, parent_staff):
         self.voice_num = Voice.voice_num
+        self.parent_staff = parent_staff
         Voice.voice_num += 1
         self.volume = 0.65  # between mp and mf
         self.note_list = events.TimedList()
@@ -38,6 +39,10 @@ class Voice:
 
         returns True if a voice was untied
         """
+        if event_type == "Dynamic":
+            self.note_list.append(note_start_time, note, event_type)
+            return False  # no note has been untied
+
         untied_note = False
         if self.last_note_tied:
             logging.debug(f"tieing {note.pitch}")
@@ -108,3 +113,4 @@ class Voice:
             "pppp": 0.34,
             "ppppp": 0.25,
         }[new_volume]
+        return self.volume
