@@ -1,14 +1,28 @@
-from dataclasses import dataclass
+"""
+Contains classes concerned with handling sequential events in the
+score.  For instance, a time signature changes at various points
+and a 'performer' needs to be aware of this
+"""
 
 
-@dataclass
 class TimedElmt:
     """
     carve out the shape of an element in the TimedList
     """
 
-    event_time: float  # seconds from start
-    event: object
+    def __init__(self, event_time, event, event_type="Note"):
+        self.event_time = event_time  # seconds from start
+        self.event_type = event_type
+        self.event = event
+
+    def __str__(self):
+        return f"[{int(self.event_time):06d}-{self.event_type}: {self.event}]"
+
+    def is_note(self):
+        """
+        identify a note event
+        """
+        return self.event_type == "Note"
 
 
 class TimedList:
@@ -25,6 +39,18 @@ class TimedList:
         """
         self.event_list = []
         self.bin_chop_depth = 0
+
+    def append(self, event_time, event, event_type="Note"):
+        """
+        Add (with an element block), to the tail of the list
+        """
+        t_elmt = TimedElmt(event_time, event, event_type=event_type)
+        # must be for a timestamp at or after the last one
+        assert (
+            len(self.event_list) == 0
+            or event_time >= self.event_list[-1].event_time
+        )
+        self.event_list.append(t_elmt)
 
     def bin_chop_loc(self, time, e_l):
         """
@@ -49,10 +75,10 @@ class TimedList:
         """
         # el = {'at': event_time,
         #      'event': mido_note}
-        el = TimedElmt(event_time=event_time, event=mido_note)
+        t_elmt = TimedElmt(event_time=event_time, event=mido_note)
         self.bin_chop_depth = 0
         insert_point = self.bin_chop_loc(event_time, self.event_list)
-        self.event_list.insert(insert_point, el)
+        self.event_list.insert(insert_point, t_elmt)
 
     def __iter__(self):
         """

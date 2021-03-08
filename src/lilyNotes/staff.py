@@ -6,7 +6,7 @@
 """
 import logging
 import re
-from lilyNotes import Note, Voice
+from lilyNotes import note as lily_note, voice
 
 
 class TieException(Exception):
@@ -22,6 +22,7 @@ class Staff:
 
     WHITESPACE = re.compile(r"\s+")
     TIME_LAPSE = 1.0
+    CLICKS_PER_BEAT = 384  # 2**8 * 3
 
     def __init__(self, filename):
         self.note_list = []
@@ -66,11 +67,15 @@ class Staff:
         """
         logging.warning(f"event not recognised: {e[1]} at {time}={e[0]}s")
 
+    def broadcast_to_current_voices(self, event_time, event_info):
+        for each_voice in self.voices:
+            each_voice.append(event_time, event_info, event_type="Dynamic")
+
     def create_new_voice(self):
         """
         add a new voice to this staff
         """
-        new_voice = Voice.Voice()
+        new_voice = voice.Voice()
         self.voices.append(new_voice)
         if len(self.voices) >= 6:
             raise ValueError
@@ -208,8 +213,13 @@ class Staff:
         however, to create a midi file, I need to set a tempo in microseconds
         per quarter note. ie 60/BPM * 1e6 or 240/new_tempo * 1e6
         """
+        ## code currently assumes only one tempo event at the start
+
         new_tempo = float(e[2])
         self.tempo = 240 / new_tempo * 1e6
+
+        # for a piece which changes tempo, would need to create and event
+        # to output a midi meta message for tempo change.
 
     def process_note(self, note_start, e):
         """
@@ -227,12 +237,15 @@ class Staff:
             *unused_origin,
         ) = e
         logging.info(f"found note: {midi_note}")
+
         # To help with accuracy, at this point we convert the time and duration
-        # into clicks.  We choose 384 clicks per quarter, ie *4*384
-        note = Note.Note(
+        # into clicks.  We choose 384 clicks per quarter note,
+        # the input file thinks a quarter note takes .25s, so &4 for beats and
+        # * 384 for clicks
+        note = lily_note.Note(
             midi_note,
-            at=note_start * 4 * 384,
-            seconds=float(note_duration) * 4 * 384,
+            at=note_start * 4 * Staff.CLICKS_PER_BEAT,
+            clicks=float(note_duration) * 4 * Staff.CLICKS_PER_BEAT,
             bar=int(bar_num),
         )
 
@@ -269,7 +282,7 @@ class Staff:
         for v in self.voices:
             for n in v.note_list:
                 for e in effects:
-                    e(n)  # apply the effect to the note
+                    e(n.event)  # apply the effect to the note
 
     def more_staccato(self, note):
         """

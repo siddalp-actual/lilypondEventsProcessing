@@ -4,9 +4,6 @@
     Notes which are held in Voices (think instrument or choral part).  The
     voices are held in a Score, which does the main parsing work.
 """
-from dataclasses import dataclass
-import logging
-import re
 
 
 class Note:
@@ -16,9 +13,9 @@ class Note:
 
     STRESS_INCREMENT = 15
 
-    def __init__(self, midi_pitch, at=0, seconds=0.25, bar=0):
+    def __init__(self, midi_pitch, at=0, clicks=0.25, bar=0):
         self.pitch = int(midi_pitch)
-        self.duration = seconds
+        self.duration = clicks
         self.start_time = at
         self.volume = float(71 / 127)
         self.bar = bar
@@ -27,12 +24,12 @@ class Note:
     def __repr__(self):
         return f"{self.pitch} {self.duration} {int(self.volume * 127)}"
 
-    def extend(self, seconds=0.25):
+    def extend(self, clicks=0.25):
         """
         when a tie is spotted and we need to extend the previous note
         by the length of the new note
         """
-        self.duration += seconds
+        self.duration += clicks
 
     def accent(self, stress_type):
         """

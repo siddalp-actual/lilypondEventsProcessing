@@ -1,4 +1,13 @@
+"""
+A voice represents a sequence of related notes, eg an instrument or
+vocal part.
+There is a bunch of state it holds,such as volume, whether a tie
+or slur is in progress, which need to be considered when adding notes
+or articulation events.
+"""
 import logging
+
+from lilyNotes import events
 
 
 class Voice:
@@ -11,8 +20,8 @@ class Voice:
     def __init__(self):
         self.voice_num = Voice.voice_num
         Voice.voice_num += 1
-        self.volume = 0.5
-        self.note_list = []
+        self.volume = 0.65  # between mp and mf
+        self.note_list = events.TimedList()
         self.last_note = None
         self.busy_until = 0
         self.last_note_tied = False
@@ -22,7 +31,7 @@ class Voice:
     def __repr__(self):
         return f"Voice#{self.voice_num:0d}<{self.last_note.pitch:0d}>"
 
-    def append(self, note_start_time, note):
+    def append(self, note_start_time, note, event_type="Note"):
         """
         appending a note to a voice might extend the last note, if we've had
         a tie
@@ -35,12 +44,12 @@ class Voice:
             logging.debug(f"append: {self.busy_until} : {note_start_time}")
             assert self.last_note.pitch == note.pitch
             assert abs(self.busy_until - note_start_time) < 1e-6
-            self.last_note.extend(seconds=note.duration)
+            self.last_note.extend(clicks=note.duration)
             self.busy_until += note.duration
             self.last_note_tied = False
             untied_note = True
         else:
-            self.note_list.append(note)
+            self.note_list.append(note_start_time, note, event_type=event_type)
             self.last_note = note
             self.busy_until = note_start_time + note.duration
             note.set_velocity(self.volume)  # current voice volume
