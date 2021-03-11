@@ -77,7 +77,7 @@ class Voice:
         flag this voice as having a pending tie
         """
         self.last_note_tied = True
-        self.tie_start_bar = self.last_note.bar
+        self.tie_start_bar = self.last_note.bar_num
 
     def prep_slur(self):
         """

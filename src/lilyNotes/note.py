@@ -13,13 +13,13 @@ class Note:
 
     STRESS_INCREMENT = 15
 
-    def __init__(self, midi_pitch, at=0, clicks=0.25, bar=0, bar_pos=0):
+    def __init__(self, midi_pitch, at=0, clicks=0.25, bar_num=0, bar_pos=0):
         self.pitch = int(midi_pitch)
         self.duration = clicks
         self.start_time = at
         self.volume = float(71 / 127)
-        self.bar = bar
-        self.bar_pos = bar_pos
+        self.bar_num = int(bar_num)
+        self.bar_pos = float(bar_pos)
         self.slurred = False
 
     def __repr__(self):

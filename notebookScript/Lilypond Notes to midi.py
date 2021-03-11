@@ -51,7 +51,7 @@
 # !cat ../music\ representation.ly
 
 # %%
-# !head ../epresentation-unnamed-staff.notes
+# !head ../music\ representation-unnamed-staff.notes
 
 # %% [markdown]
 # Which I can read and parse with the following python
@@ -76,7 +76,8 @@ FILE = "/home/siddalp/audio/Let nothing trouble you/Let nothing trouble you-unna
 logging.basicConfig(#filename='example.log', 
                     encoding='utf-8',
                     force=True,
-                    level=logging.WARNING
+#                    level=logging.WARNING
+                    level=logging.INFO
 #                    level=logging.DEBUG
 )
 
@@ -88,16 +89,22 @@ logging.basicConfig(#filename='example.log',
 importlib.reload(lilyNotes)
 #import lilyNotes.Staff  ## not needed because module's __init__.ly does it for you
 
-staff = lilyNotes.Staff.Staff(FILE)
+staff = lilyNotes.staff.Staff(FILE)
 
 
 # %%
 #dir(lilyNotes.Note.Note)
-globals()
+#globals()
+for n in staff.voices[0].note_list:
+    print(n)
+print(staff.voices)
 
 # %%
-staff.articulate([staff.more_staccato])
-staff.show_notes()
+#staff.articulate([staff.more_staccato])
+#staff.show_notes()
+print(staff.performance)
+for n in staff.performance[0]:
+    print(n)
 
 
 # %%
@@ -111,11 +118,11 @@ print(midi_file.ticks_per_beat)
 
 def schedule(note, voice, event_list):
 
-    on = mido.Message('note_on', channel=voice.voice_num, note=note.pitch, velocity=int(note.volume * 127)
+    on = mido.Message('note_on', channel=voice, note=note.pitch, velocity=int(note.volume * 127)
                      )
     event_list.insert(on, note.start_time)
     
-    off = mido.Message('note_off', channel=voice.voice_num, note=note.pitch, velocity=0)
+    off = mido.Message('note_off', channel=voice, note=note.pitch, velocity=0)
     
     event_list.insert(off, (note.start_time + note.duration))
 
@@ -124,11 +131,13 @@ print(f"tempo: {staff.tempo}")
 tempo_msg = mido.MetaMessage('set_tempo', tempo=int(staff.tempo))
 track_zero.append(tempo_msg)
 midi_file.tracks.append(track_zero)
-for v in staff.voices:
-    track_events = lilyNotes.Events.TimedList()
+for i, v in enumerate(staff.performance):
+    
+    track_events = lilyNotes.events.TimedList()
     track = mido.MidiTrack()
-    for n in v.note_list:
-        schedule(n, v, track_events)
+    for n in v:
+        if n.is_note():
+            schedule(n.event, i, track_events)
         
     last_time = 0
     for ev in track_events:
@@ -145,5 +154,13 @@ midi_file.save("../try.midi")
 
 # %%
 print(staff.tempo)
+
+# %%
+[1, 2, 3][-1]
+
+# %%
+list = [1,2,3]
+del list[i] #del list[1] #list.pop(1)
+list
 
 # %%

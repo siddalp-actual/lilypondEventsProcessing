@@ -31,18 +31,15 @@ class Staff:
         self.tied_voices_set = set([])
         self.tempo = Staff.TIME_LAPSE
         self.beat_structure = [0]
+        self.beats_per_bar = 0
         with open(filename, "r") as f:
             for line in f:
                 self.process(line)
 
+        self.performance = []
         for each_voice in self.voices:
             perf = performer.Performer(each_voice)
-            perf.articulate(
-                [
-                    performer.Performer.more_staccato,
-                    performer.Performer.stress_beats,
-                ]
-            )
+            self.performance.append(perf.standard_articulation())
 
     def process(self, l):
         """
@@ -60,6 +57,7 @@ class Staff:
         """
         event_time = float(e[0])
         event_type = e[1]
+        logging.info(f"Input event: %0.03f : %s", event_time, e[1:])
         {
             "note": self.process_note,
             "tempo": self.process_tempo,
@@ -67,6 +65,8 @@ class Staff:
             "slur": self.process_slur,
             "time-sig": self.process_timesig,
             "dynamic": self.process_dynamic,
+            "cresc": self.process_hairpin_start,
+            "decresc": self.process_hairpin_start,
         }.get(event_type, self.event_not_recognised)(event_time, e)
 
     @staticmethod
@@ -102,9 +102,9 @@ class Staff:
             logging.debug(f"find_free: tied {self.tied_voices_set}")
             logging.debug("find_free: all {self.voices}")
             for v in self.tied_voices_set:
-                if v.tie_start_bar + 2 <= note_info.bar:
+                if v.tie_start_bar + 2 <= note_info.bar_num:
                     logging.debug(
-                        f"find_free: *TIE* at bar {note_info.bar} {v} tie "
+                        f"find_free: *TIE* at bar {note_info.bar_num} {v} tie "
                         "started in {v.tie_start_bar}"
                     )
                     raise TieException  # can't tie through a whole bar
@@ -140,16 +140,14 @@ class Staff:
 
         return v
 
-    def end_hairpin(self, new_volume):
+    def process_hairpin_start(self, start_time, e):
         """
-        the end of a crescendo or decrescendo may have been reached
-        we can now calculate the volume increase or decrease per beat and
-        apply it to any intervening notes
+        start of cresc, decresc etc where we don't know the
+        rate of increase and need to wait for it's end to
+        work it out.
         """
-        logging.warning(
-            f"end of dynamic change reached {new_volume}"
-            " *** more code needed ***"
-        )
+        e[1] = "start_hairpin"
+        self.broadcast_to_current_voices(start_time, e)
 
     def process_dynamic(self, start_time, e):
         """
@@ -159,7 +157,6 @@ class Staff:
         self.broadcast_to_current_voices(start_time, e)
         for v in self.voices:
             v.set_volume(new_volume)
-        self.end_hairpin(new_volume)
 
     def process_timesig(self, start_time, e):
         """
@@ -167,14 +164,14 @@ class Staff:
         note type.  We only care about the number per bar
         """
         self.broadcast_to_current_voices(start_time, e)
-        beats_per_bar = int(e[2])
+        self.beats_per_bar = int(e[2])
         self.beat_structure = {
             2: [0],
             3: [0],
             4: [0],
             6: [0, 0.5],
             8: [0, 0.5],
-        }[beats_per_bar]
+        }[self.beats_per_bar]
 
     def process_slur(self, unused_note_start, e):
         """
@@ -248,7 +245,6 @@ class Staff:
             bar_pos,
             *unused_origin,
         ) = e
-        logging.info(f"found note: {midi_note}")
 
         # To help with accuracy, at this point we convert the time and duration
         # into clicks.  We choose 384 clicks per quarter note,
@@ -258,7 +254,7 @@ class Staff:
             midi_note,
             at=note_start * 4 * Staff.CLICKS_PER_BEAT,
             clicks=float(note_duration) * 4 * Staff.CLICKS_PER_BEAT,
-            bar=int(bar_num),
+            bar_num=int(bar_num),
             bar_pos=bar_pos,
         )
 
