@@ -6,7 +6,7 @@
 """
 import logging
 import re
-from lilyNotes import note as lily_note, voice, performer
+from lilyNotes import note as lily_note, voice, performer, score_pos
 
 
 class TieException(Exception):
@@ -87,7 +87,7 @@ class Staff:
         """
         new_voice = voice.Voice(self)
         self.voices.append(new_voice)
-        if len(self.voices) >= 6:
+        if len(self.voices) >= 7:
             raise ValueError
         return new_voice
 
@@ -102,14 +102,16 @@ class Staff:
             logging.debug(f"find_free: tied {self.tied_voices_set}")
             logging.debug("find_free: all {self.voices}")
             for v in self.tied_voices_set:
-                if v.tie_start_bar + 2 <= note_info.bar_num:
+                if v.tie_start_bar + 2 <= note_info.score_position.bar_number():
                     logging.debug(
-                        f"find_free: *TIE* at bar {note_info.bar_num} {v} tie "
-                        "started in {v.tie_start_bar}"
+                        "find_free: *TIE* at bar %d %s tie started in %d",
+                        note_info.score_position.bar_number(),
+                        v,
+                        v.tie_start_bar,
                     )
                     raise TieException  # can't tie through a whole bar
                 if note_info.pitch == v.last_note.pitch:
-                    logging.debug(f"returning tied voice {v}")
+                    logging.debug("returning tied voice %s", v)
                     return v
 
         for v in self.voices:
@@ -250,12 +252,12 @@ class Staff:
         # into clicks.  We choose 384 clicks per quarter note,
         # the input file thinks a quarter note takes .25s, so &4 for beats and
         # * 384 for clicks
+        score_position = score_pos.ScorePosition(bar_num, bar_pos)
         note = lily_note.Note(
             midi_note,
             at=note_start * 4 * Staff.CLICKS_PER_BEAT,
             clicks=float(note_duration) * 4 * Staff.CLICKS_PER_BEAT,
-            bar_num=int(bar_num),
-            bar_pos=bar_pos,
+            position=score_position,
         )
 
         self.note_list.append(note)  # all the notes in the score

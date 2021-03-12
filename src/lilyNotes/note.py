@@ -13,13 +13,12 @@ class Note:
 
     STRESS_INCREMENT = 15
 
-    def __init__(self, midi_pitch, at=0, clicks=0.25, bar_num=0, bar_pos=0):
+    def __init__(self, midi_pitch, at=0, clicks=0.25, position=None):
         self.pitch = int(midi_pitch)
         self.duration = clicks
         self.start_time = at
         self.volume = float(71 / 127)
-        self.bar_num = int(bar_num)
-        self.bar_pos = float(bar_pos)
+        self.score_position = position
         self.slurred = False
 
     def __repr__(self):
@@ -68,3 +67,31 @@ class Note:
             factor = 0.1  # really short (for staccato dot)
         if not self.slurred:
             self.duration *= factor
+
+    def as_mido_on_attrs(self):
+        """
+        return the note's midi attributes in a format suitable for
+        generating a mido message
+        """
+        attribs = {
+            "type": "note_on",
+            "time": 0,
+            "channel": 1,
+            "note": self.pitch,
+            "velocity": self.volume * 127,
+        }
+        return attribs
+
+    def as_mido_off_attrs(self):
+        """
+        return the note's midi attributes in a format suitable for
+        generating a mido message
+        """
+        attribs = {
+            "type": "note_off",
+            "time": self.duration,
+            "channel": 1,
+            "note": self.pitch,
+            "velocity": 0,
+        }
+        return attribs

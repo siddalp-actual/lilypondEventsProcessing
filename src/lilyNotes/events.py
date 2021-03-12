@@ -46,10 +46,19 @@ class TimedList:
         """
         t_elmt = TimedElmt(event_time, event, event_type=event_type)
         # must be for a timestamp at or after the last one
-        assert (
-            len(self.event_list) == 0
-            or event_time >= self.event_list[-1].event_time
-        )
+        try:
+            assert (
+                len(self.event_list) == 0
+                or event_time >= self.event_list[-1].event_time
+            )
+        except AssertionError as a_error:
+            print(f"len event_list, {len(self.event_list)}")
+            if len(self.event_list) != 0:
+                print(f"last element time: {self.event_list[-1].event_time}")
+                print(f"last eleemnt: {self.event_list[-1].event}")
+            print(f"new event_time: {event_time}")
+            print("most likely, to lilypond runs in the notes file")
+            raise a_error
         self.event_list.append(t_elmt)
 
     def bin_chop_loc(self, time, e_l):

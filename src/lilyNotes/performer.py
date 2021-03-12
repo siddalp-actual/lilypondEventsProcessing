@@ -27,8 +27,7 @@ class Performer:
         self.volume = 0.65
         self.in_hairpin = False
         self.hairpin_event = None
-        self.bar_num = 0
-        self.bar_pos = 0
+        self.score_position = 0
         # initial time signatures are seen before notes, so voices don't
         # exist.  Get it from the staff
         self.beat_structure = note_stream.parent_staff.beat_structure
@@ -59,8 +58,7 @@ class Performer:
             event_added = False
             new_event = copy.deepcopy(event.event)
             if event.is_note():
-                self.bar_num = new_event.bar_num
-                self.bar_pos = new_event.bar_pos
+                self.score_position = new_event.score_position
                 new_event.volume = self.volume
             else:
                 if new_event[1] == "start_hairpin":
@@ -87,8 +85,7 @@ class Performer:
             if event.is_note():
                 # Now the performer tracks the bar number so where necesary,
                 # rates per beat can be used.
-                self.bar_num = event.event.bar_num
-                self.bar_pos = event.event.bar_pos
+                self.score_position = event.event.score_position
                 for effect in effects:
                     effect(self, event.event)  # apply the effect to the note
             else:
@@ -100,6 +97,7 @@ class Performer:
 
                 if event.event[1] == "time-sig":
                     self.beats_per_bar = int(event.event[2])
+                    self.score_position.set_beats_per_bar(event.event[2])
                     self.beat_structure = {
                         2: [0],
                         3: [0],
@@ -127,7 +125,7 @@ class Performer:
             print(self.in_hairpin, self.hairpin_event)
             raise ValueError
         assert not self.in_hairpin
-        self.in_hairpin = [self.bar_num, self.bar_pos]
+        self.in_hairpin = self.score_position
         origin_event[3] = self.volume
         self.hairpin_event = origin_event
 
@@ -142,12 +140,9 @@ class Performer:
             return
         hairpin_start = self.in_hairpin
         hairpin_start_volume = self.hairpin_event[3]
-        hairpin_end = [self.bar_num, self.bar_pos]
+        hairpin_end = self.score_position
         hairpin_end_volume = new_volume
-        hairpin_range = [
-            hairpin_end[i] - hairpin_start[i] for i in range(len(hairpin_start))
-        ]
-        hairpin_beats = self.beats_per_bar * sum(hairpin_range)
+        hairpin_beats = (hairpin_end - hairpin_start).as_beats()
         volume_rate = (hairpin_end_volume - hairpin_start_volume) / (
             hairpin_beats
         )
@@ -174,12 +169,8 @@ class Performer:
         if self.in_hairpin:
             # work out number of beats into hairpin
             hairpin_start = self.in_hairpin
-            current_pos = [self.bar_num, self.bar_pos]
-            pos_in_hairpin = [
-                current_pos[i] - hairpin_start[i]
-                for i in range(len(hairpin_start))
-            ]
-            beats_into_hairpin = self.beats_per_bar * sum(pos_in_hairpin)
+            current_pos = self.score_position
+            beats_into_hairpin = (current_pos - hairpin_start).as_beats()
             volume_increment = beats_into_hairpin * self.hairpin_event[4]
         note.set_velocity(self.volume + volume_increment)
 
@@ -197,14 +188,14 @@ class Performer:
         stressing the second part of a tie
         """
         for stress_pos in self.beat_structure:
-            if abs(float(note.bar_pos) - stress_pos) < 1e-6:
+            if abs(float(note.score_position.bar_pos) - stress_pos) < 1e-6:
                 note.accent(stress_pos)  # stress first beat of bar
 
     def bar_counter(self, unused_note):
         """
         checking the effects are driven
         """
-        print(self.bar_num, self.bar_pos, self.in_hairpin)
+        print(self.score_position, self.in_hairpin)
 
     @staticmethod
     def show_event(unused_self, note):
