@@ -26,12 +26,18 @@ class Performer:
         self.note_stream = note_stream
         self.volume = 0.65
         self.in_hairpin = False
+        self.hairpin_event = None
+        self.bar_num = 0
+        self.bar_pos = 0
         # initial time signatures are seen before notes, so voices don't
         # exist.  Get it from the staff
         self.beat_structure = note_stream.parent_staff.beat_structure
         self.beats_per_bar = note_stream.parent_staff.beats_per_bar
 
     def standard_articulation(self):
+        """
+        a set of articulation functions for normal use
+        """
         return self.articulate(
             [
                 Performer.set_volume_for_stream,
@@ -50,6 +56,7 @@ class Performer:
 
         # First pass, get the notes and tee up some dynamics
         for event in self.event_list:
+            event_added = False
             new_event = copy.deepcopy(event.event)
             if event.is_note():
                 self.bar_num = new_event.bar_num
@@ -64,7 +71,14 @@ class Performer:
                         str(event.event[2])
                     )
                     self.end_hairpin(self.volume)
-            new_stream.append(event.event_time, new_event, event.event_type)
+                    # insert the dynamic so it precedes notes at the same
+                    # point in the score
+                    new_stream.insert(
+                        event.event_time, new_event, event.event_type
+                    )
+                    event_added = True
+            if not event_added:
+                new_stream.append(event.event_time, new_event, event.event_type)
 
         logging.info("Performer.articulate finished first pass")
 
@@ -192,7 +206,8 @@ class Performer:
         """
         print(self.bar_num, self.bar_pos, self.in_hairpin)
 
-    def show_event(self, note):
+    @staticmethod
+    def show_event(unused_self, note):
         """
         what's in the note
         """

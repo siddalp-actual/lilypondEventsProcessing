@@ -63,19 +63,21 @@ class TimedList:
         if len(e_l) == 0:
             return 0
         pos = max(0, int(len(e_l) / 2) - 1)
-        if time < e_l[pos].event_time:  # insert in left hand sub list
+        if time <= e_l[pos].event_time:  # insert in left hand sub list
             # print("lh search")
             return self.bin_chop_loc(time, e_l[:pos])
         # print("rh search")
         return pos + 1 + self.bin_chop_loc(time, e_l[pos + 1 :])
 
-    def insert(self, mido_note, event_time):
+    def insert(self, event_time, mido_note, event_type):
         """
         build data structure to hold timed event and insert
         """
         # el = {'at': event_time,
         #      'event': mido_note}
-        t_elmt = TimedElmt(event_time=event_time, event=mido_note)
+        t_elmt = TimedElmt(
+            event_time=event_time, event=mido_note, event_type=event_type
+        )
         self.bin_chop_depth = 0
         insert_point = self.bin_chop_loc(event_time, self.event_list)
         self.event_list.insert(insert_point, t_elmt)
