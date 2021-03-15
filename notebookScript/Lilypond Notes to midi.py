@@ -65,13 +65,14 @@ import importlib
 import logging
 import sys
 
-sys.path.append("/home/siddalp/github/lilypondEventsProcessing/src/")
+sys.path.append("/home/siddalp/github/lilypondEventsProcessing/")
 import lilyNotes
 
 FILE = "../ody-unnamed-staff.notes"
 FILE = "../music representation-unnamed-staff.notes"
 FILE = "/home/siddalp/audio/P256 St Theodulph/heodulph-unnamed-staff.notes"
 FILE = "/home/siddalp/audio/Let nothing trouble you/Let nothing trouble you-unnamed-staff.notes"
+FILE = "/home/siddalp/audio/Love Is/love is-unnamed-staff.notes"
 
 logging.basicConfig(#filename='example.log', 
                     encoding='utf-8',
@@ -120,11 +121,11 @@ def schedule(note, voice, event_list):
 
     on = mido.Message('note_on', channel=voice, note=note.pitch, velocity=int(note.volume * 127)
                      )
-    event_list.insert(on, note.start_time)
+    event_list.insert(note.start_time, on, event_type="mido-note")
     
     off = mido.Message('note_off', channel=voice, note=note.pitch, velocity=0)
     
-    event_list.insert(off, (note.start_time + note.duration))
+    event_list.insert((note.start_time + note.duration), off, event_type="mido-note")
 
 track_zero = mido.MidiTrack()
 print(f"tempo: {staff.tempo}")
@@ -153,6 +154,11 @@ for i, v in enumerate(staff.performance):
 midi_file.save("../try.midi")
 
 # %%
+for each_voice in staff.voices:
+    m_p = lilyNotes.performer.MidiPerformer(each_voice)
+    e_l = m_p.standard_articulation()
+
+# %%
 print(staff.tempo)
 
 # %%
@@ -160,7 +166,7 @@ print(staff.tempo)
 
 # %%
 list = [1,2,3]
-del list[i] #del list[1] #list.pop(1)
+del list[1] #del list[1] #list.pop(1)
 list
 
 # %%

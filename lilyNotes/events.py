@@ -57,7 +57,7 @@ class TimedList:
                 print(f"last element time: {self.event_list[-1].event_time}")
                 print(f"last eleemnt: {self.event_list[-1].event}")
             print(f"new event_time: {event_time}")
-            print("most likely, to lilypond runs in the notes file")
+            print("most likely, two lilypond runs in the notes file")
             raise a_error
         self.event_list.append(t_elmt)
 

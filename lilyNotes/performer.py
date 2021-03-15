@@ -8,6 +8,8 @@ time signature (effects the beat pattern)
 import copy
 import logging
 
+import mido
+
 from lilyNotes import voice, events
 
 
@@ -211,3 +213,30 @@ class MidiPerformer(Performer):
     characteristics, eg we must send a `midi_off` at the
     end of the note
     """
+
+    def standard_articulation(self):
+        """
+        a set of articulation functions for normal use
+        """
+        return self.articulate(
+            [
+                Performer.set_volume_for_stream,
+                Performer.more_staccato,
+                Performer.stress_beats,
+                MidiPerformer.schedule_midi_events
+                #    Performer.bar_counter,
+                #    Performer.show_event,
+            ]
+        )
+
+    def schedule_midi_events(self, note):
+        """
+        for each note we need a midi on and midi off event
+        """
+        note_on = mido.Message(**note.as_mido_on_attrs())
+        self.event_list.insert(note.start_time, note_on, event_type="mido-note")
+
+        note_off = mido.Message(**note.as_mido_off_attrs())
+        self.event_list.insert(
+            (note.start_time + note.duration), note_off, event_type="mido-note"
+        )

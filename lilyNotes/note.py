@@ -78,7 +78,7 @@ class Note:
             "time": 0,
             "channel": 1,
             "note": self.pitch,
-            "velocity": self.volume * 127,
+            "velocity": int(self.volume * 127),
         }
         return attribs
 

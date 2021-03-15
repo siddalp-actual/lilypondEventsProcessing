@@ -4,7 +4,7 @@ some unit tests to verify the ScorePosition class
 import sys
 import unittest
 
-sys.path.append("../src/")
+sys.path.append("../")
 
 import lilyNotes.score_pos
 
@@ -53,9 +53,9 @@ class TestStuff(unittest.TestCase):
         self.assertFalse(thing_a != thing_b)
 
     def test04_subtraction(self):
-        '''
+        """
         test the subtraction operator
-        '''
+        """
         thing_a = lilyNotes.score_pos.ScorePosition(1, 0.5)
         thing_b = lilyNotes.score_pos.ScorePosition(0, 0.5)
         # print((thing_a - thing_b).as_array())
@@ -69,16 +69,17 @@ class TestStuff(unittest.TestCase):
         )
 
     def test05_component(self):
-        '''
+        """
         return a component
-        '''
+        """
         thing = lilyNotes.score_pos.ScorePosition(15, 0.125)
         self.assertEqual(15, thing.bar_number())
 
+
 def do_tests():
-    '''
+    """
     run the tests
-    '''
+    """
     suite = unittest.TestLoader().loadTestsFromTestCase(TestStuff)
     unittest.TextTestRunner(verbosity=2).run(suite)
 
