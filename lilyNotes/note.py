@@ -11,7 +11,7 @@ class Note:
     represents a music note
     """
 
-    STRESS_INCREMENT = 15
+    STRESS_INCREMENT = 9
 
     def __init__(self, midi_pitch, at=0, clicks=0.25, position=None):
         self.pitch = int(midi_pitch)

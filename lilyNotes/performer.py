@@ -145,15 +145,18 @@ class Performer:
         hairpin_end = self.score_position
         hairpin_end_volume = new_volume
         hairpin_beats = (hairpin_end - hairpin_start).as_beats()
-        volume_rate = (hairpin_end_volume - hairpin_start_volume) / (
-            hairpin_beats
-        )
+        # looks like some transient voices may get a hairpin of
+        # 0 beats ????
+        hairpin_beats = max(hairpin_beats, 1)
         logging.info(
             "end_hairpin sees: start %s:%s end %s,%s",
             hairpin_start,
             hairpin_start_volume,
             hairpin_end,
             hairpin_end_volume,
+        )
+        volume_rate = (hairpin_end_volume - hairpin_start_volume) / (
+            hairpin_beats
         )
         self.in_hairpin = False
         ## sub-script 4 item

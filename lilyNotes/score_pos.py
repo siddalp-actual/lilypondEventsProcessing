@@ -50,7 +50,8 @@ class ScorePosition:
         """
         set the class variable
         """
-        cls.beats_per_bar = beats
+        cls.beats_per_bar = int(beats)
+        assert cls.beats_per_bar != 0
 
     def __str__(self):
         """

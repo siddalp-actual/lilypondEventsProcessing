@@ -45,8 +45,8 @@ class Voice:
 
         untied_note = False
         if self.last_note_tied:
-            logging.debug(f"tieing {note.pitch}")
-            logging.debug(f"append: {self.busy_until} : {note_start_time}")
+            logging.debug("tieing %s", note.pitch)
+            logging.debug("append: %s : %s", self.busy_until, note_start_time)
             assert self.last_note.pitch == note.pitch
             assert abs(self.busy_until - note_start_time) < 1e-6
             self.last_note.extend(clicks=note.duration)

@@ -75,6 +75,21 @@ class TestStuff(unittest.TestCase):
         thing = lilyNotes.score_pos.ScorePosition(15, 0.125)
         self.assertEqual(15, thing.bar_number())
 
+    def test07_why_is_this_broken(self):
+        """
+        found this problem in a piece of music, but it doesn't show
+        up in unit test.
+        I think what went on was that one voice contained very few
+        notes, so the start and end of hairpin appeared at the same
+        point in that voice's timeline, leading to a as_beats() of
+        0 and division by zero in the scaling of velocity.
+        """
+        hairpin_end = lilyNotes.score_pos.ScorePosition(52, 0.0)
+        hairpin_end.set_beats_per_bar(4)
+        hairpin_start = lilyNotes.score_pos.ScorePosition(47, 0.75)
+        print((hairpin_end - hairpin_start))
+        print((hairpin_end - hairpin_start).as_beats())
+
 
 def do_tests():
     """
