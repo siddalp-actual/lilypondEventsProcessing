@@ -192,6 +192,8 @@ class Performer:
         should be an attribute of the voice and we certainly shouldn't be
         stressing the second part of a tie
         """
+        if note.is_rest():
+            return
         for stress_pos in self.beat_structure:
             if abs(float(note.score_position.bar_pos) - stress_pos) < 1e-6:
                 note.accent(stress_pos)  # stress first beat of bar
@@ -236,6 +238,9 @@ class MidiPerformer(Performer):
         """
         for each note we need a midi on and midi off event
         """
+        if note.is_rest():
+            return
+
         note_on = mido.Message(**note.as_mido_on_attrs())
         self.event_list.insert(note.start_time, note_on, event_type="mido-note")
 

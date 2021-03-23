@@ -29,12 +29,17 @@ class Note:
         when a tie is spotted and we need to extend the previous note
         by the length of the new note
         """
+        if self.is_rest():
+            # should not be extending a rest, implies a tie
+            raise ValueError
         self.duration += clicks
 
     def accent(self, stress_type):
         """
         stress this note (add velocity), typically for first beat in bar
         """
+        if self.is_rest():
+            return
         if stress_type == 0:
             self.volume += Note.STRESS_INCREMENT / 127
         else:
@@ -63,16 +68,27 @@ class Note:
         """
         shorten this note by a factor
         """
+        if self.is_rest():
+            return
         if factor == 0:
             factor = 0.1  # really short (for staccato dot)
         if not self.slurred:
             self.duration *= factor
+
+    def is_rest(self):
+        """
+        rests use a dummy pitch of -1
+        """
+        return self.pitch == -1
 
     def as_mido_on_attrs(self):
         """
         return the note's midi attributes in a format suitable for
         generating a mido message
         """
+        if self.is_rest():
+            return None
+
         attribs = {
             "type": "note_on",
             "time": 0,
@@ -87,6 +103,9 @@ class Note:
         return the note's midi attributes in a format suitable for
         generating a mido message
         """
+        if self.is_rest():
+            return None
+
         attribs = {
             "type": "note_off",
             "time": self.duration,

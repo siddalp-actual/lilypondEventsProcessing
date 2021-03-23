@@ -25,7 +25,6 @@ class Staff:
     CLICKS_PER_BEAT = 384  # 2**8 * 3
 
     def __init__(self, filename):
-        self.note_list = []
         self.voices = []
         self.last_voice = None
         self.tied_voices_set = set([])
@@ -57,7 +56,7 @@ class Staff:
         """
         event_time = float(e[0])
         event_type = e[1]
-        logging.info(f"Input event: %0.03f : %s", event_time, e[1:])
+        logging.info("Input event: %0.03f : %s", event_time, e[1:])
         {
             "note": self.process_note,
             "tempo": self.process_tempo,
@@ -67,6 +66,7 @@ class Staff:
             "dynamic": self.process_dynamic,
             "cresc": self.process_hairpin_start,
             "decresc": self.process_hairpin_start,
+            "rest": self.process_rest,
         }.get(event_type, self.event_not_recognised)(event_time, e)
 
     @staticmethod
@@ -74,7 +74,7 @@ class Staff:
         """
         flag up an error
         """
-        logging.warning(f"event not recognised: {e[1]} at {time}={e[0]}s")
+        logging.warning("event not recognised: %s at %s=%ss", e[1], time, e[0])
 
     def broadcast_to_current_voices(self, event_time, event_info):
         click_time = event_time * 4 * Staff.CLICKS_PER_BEAT
@@ -97,10 +97,10 @@ class Staff:
         initially, we test for voices with pending ties
         """
         # does this note match a tied voice?
-        logging.debug(f"find_free_voice at {start_time}")
-        if self.tied_voices_set:
-            logging.debug(f"find_free: tied {self.tied_voices_set}")
-            logging.debug("find_free: all {self.voices}")
+        logging.debug("find_free_voice at %s for %s", start_time, note_info)
+        if not note_info.is_rest() and self.tied_voices_set:
+            logging.debug("find_free: tied %s", self.tied_voices_set)
+            logging.debug("find_free: all %s", self.voices)
             for v in self.tied_voices_set:
                 if v.tie_start_bar + 2 <= note_info.score_position.bar_number():
                     logging.debug(
@@ -116,7 +116,9 @@ class Staff:
 
         for v in self.voices:
             if v.is_busy(start_time):
-                logging.debug(f"voice {v.voice_num} busy until {v.busy_until}")
+                logging.debug(
+                    "voice %d busy until %s", v.voice_num, v.busy_until
+                )
                 continue
 
             if v.last_note_tied:
@@ -127,8 +129,10 @@ class Staff:
         try:
             v
             logging.debug(
-                f"find_free: loop returned {v.voice_num} {v.busy_until} "
-                "{v.last_note.pitch if v.last_note_tied else 0}"
+                "find_free: loop returned %d %s %d",
+                v.voice_num,
+                v.busy_until,
+                v.last_note.pitch if v.last_note_tied else 0,
             )
         except NameError:
             return self.create_new_voice()
@@ -232,6 +236,21 @@ class Staff:
         # for a piece which changes tempo, would need to create and event
         # to output a midi meta message for tempo change.
 
+    def process_rest(self, note_start, e):
+        """
+        Looks like:
+        2.00000000      rest    4       0.25000000
+        although not much to do for a rest, I think I want to make
+        the voice busy, to stop another voice's notes being scheduled
+        on to it
+        """
+        at = note_start * 4 * Staff.CLICKS_PER_BEAT
+        clicks = float(e[3]) * 4 * Staff.CLICKS_PER_BEAT
+        dummy_note = lily_note.Note(-1, at, clicks, position=None)
+        use_voice = self.find_free_voice(at, dummy_note)
+        use_voice.append(dummy_note.start_time, dummy_note)
+        self.last_voice = use_voice
+
     def process_note(self, note_start, e):
         """
         we've got a note event
@@ -260,7 +279,6 @@ class Staff:
             position=score_position,
         )
 
-        self.note_list.append(note)  # all the notes in the score
         use_voice = self.find_free_voice(note.start_time, note)
         if use_voice.last_note_tied:
             logging.info(
@@ -271,10 +289,3 @@ class Staff:
             self.tied_voices_set.remove(use_voice)
 
         self.last_voice = use_voice  # remember voice for tie
-
-    def show_notes(self):
-        """
-        iterate through the notes in the note_list
-        """
-        for n in self.note_list:
-            print(repr(n))
