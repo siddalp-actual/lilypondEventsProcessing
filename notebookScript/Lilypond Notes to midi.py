@@ -73,12 +73,13 @@ FILE = "../music representation-unnamed-staff.notes"
 FILE = "/home/siddalp/audio/P256 St Theodulph/heodulph-unnamed-staff.notes"
 FILE = "/home/siddalp/audio/Let nothing trouble you/Let nothing trouble you-unnamed-staff.notes"
 FILE = "/home/siddalp/audio/Love Is/love is-unnamed-staff.notes"
+FILE = "/home/siddalp/audio/Builders stone/Builders stone-unnamed-staff.notes"
 
 logging.basicConfig(#filename='example.log', 
                     encoding='utf-8',
                     force=True,
 #                    level=logging.WARNING
-                    level=logging.INFO
+#                    level=logging.INFO
 #                    level=logging.DEBUG
 )
 
@@ -137,7 +138,7 @@ for i, v in enumerate(staff.performance):
     track_events = lilyNotes.events.TimedList()
     track = mido.MidiTrack()
     for n in v:
-        if n.is_note():
+        if n.is_note() and not n.event.is_rest():
             schedule(n.event, i, track_events)
         
     last_time = 0
@@ -145,7 +146,7 @@ for i, v in enumerate(staff.performance):
         time_delta = ev.event_time - last_time
         #new_time = int(mido.second2tick(time_delta, ticks_per_beat= midi_file.ticks_per_beat, tempo=staff.tempo))
         new_note = ev.event.copy(time=int(time_delta))
-        print(new_note)
+        #print(new_note)
         track.append(new_note)
         last_time = ev.event_time
         
@@ -154,9 +155,20 @@ for i, v in enumerate(staff.performance):
 midi_file.save("../try.midi")
 
 # %%
-for each_voice in staff.voices:
+midi_file = mido.MidiFile(type=1)
+midi_file.ticks_per_beat = 384
+midi_file.tracks.append(track_zero)
+for i, each_voice in enumerate(staff.voices):
     m_p = lilyNotes.performer.MidiPerformer(each_voice)
-    e_l = m_p.standard_articulation()
+#    e_l = m_p.standard_articulation()
+    functions = lilyNotes.performer.MidiPerformer.MIDI_ARTICULATION_FUNCTIONS
+    functions.insert(0, lilyNotes.performer.Performer.show_event)
+    track = m_p.to_midi_track(functions)
+    midi_file.tracks.append(track)
+    if i == 0:
+        break
+    
+midi_file.save("../try2.midi")
 
 # %%
 print(staff.tempo)
@@ -168,5 +180,33 @@ print(staff.tempo)
 list = [1,2,3]
 del list[1] #del list[1] #list.pop(1)
 list
+
+# %%
+logging.error("%s", [])
+
+# %%
+"%s" % list
+
+# %%
+lilyNotes.performer.MidiPerformer.MIDI_ARTICULATION_FUNCTIONS
+
+# %%
+10.4166667*384*4
+
+
+# %%
+10.25*4*384
+
+# %%
+10.25*4*384 + 256
+
+# %%
+.16666667 *4*384
+
+# %%
+10.5833333 * 4 * 384
+
+# %%
+1e-6*4*384
 
 # %%
