@@ -52,21 +52,36 @@ class TimedList:
                 or event_time >= self.event_list[-1].event_time
             )
         except AssertionError as a_error:
-            print(f"len event_list, {len(self.event_list)}")
-            if len(self.event_list) != 0:
-                print(f"last element time: {self.event_list[-1].event_time}")
-                print(f"last eleemnt: {self.event_list[-1].event}")
-            print(f"new event_time: {event_time}")
+            self.diag_list_error(event.time)
             print("most likely, two lilypond runs in the notes file")
             raise a_error
+        if event_type == "Note":
+            event.check_valid()
+
         self.event_list.append(t_elmt)
+
+    def diag_list_error(self, insert_time):
+        """
+        print out some diagnostics when we see append or insert failure
+        """
+        print(f"len event_list, {len(self.event_list)}")
+        if len(self.event_list) != 0:
+            print(f"last element time: {self.event_list[-1].event_time}")
+            print(f"last eleemnt: {self.event_list[-1].event}")
+        print(f"new event_time: {insert_time}")
 
     def bin_chop_loc(self, time, e_l):
         """
         recursively find the insertion point for given time
         """
         self.bin_chop_depth += 1
-        assert self.bin_chop_depth <= TimedList.RECURSION_LIMIT
+        try:
+            assert self.bin_chop_depth <= TimedList.RECURSION_LIMIT
+        except AssertionError as a_error:
+            self.diag_list_error(time)
+            print("most likely, two lilypond runs in the notes file")
+            raise a_error
+
         # print(bin_chop_depth, len(e_l), e_l)
         # print(f"  searching: {time}")
         if len(e_l) == 0:
@@ -88,12 +103,15 @@ class TimedList:
             event_time=event_time, event=mido_note, event_type=event_type
         )
         self.bin_chop_depth = 0
+        if event_type == "Note":
+            mido_note.check_valid()
         insert_point = self.bin_chop_loc(event_time, self.event_list)
         self.event_list.insert(insert_point, t_elmt)
 
     def __iter__(self):
         """
-        iterate over events
+        iterate over a frozen list of the events, allowing
+        new ones to be scheduled into it by downstream processing
         """
-        for event in self.event_list:
+        for event in self.event_list.copy():
             yield event

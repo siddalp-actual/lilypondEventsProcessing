@@ -24,6 +24,17 @@ class Note:
     def __repr__(self):
         return f"{self.pitch} {self.duration} {int(self.volume * 127)}"
 
+    def check_valid(self):
+        """
+        add in some validation checking
+        """
+        try:
+            # assert type(self.duration) is int
+            assert self.duration > 1
+        except AssertionError as a_error:
+            print(self)
+            raise a_error
+
     def extend(self, clicks=0.25):
         """
         when a tie is spotted and we need to extend the previous note

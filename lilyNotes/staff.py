@@ -31,6 +31,7 @@ class Staff:
         self.tempo = Staff.TIME_LAPSE
         self.beat_structure = [0]
         self.beats_per_bar = 0
+        self.max_time = 0
         with open(filename, "r") as f:
             for line in f:
                 self.process(line)
@@ -55,6 +56,13 @@ class Staff:
         dictionary pretending to be a switch statemetn
         """
         event_time = float(e[0])
+        if event_time < self.max_time:
+            logging.error(
+                "notes file times not in sequence, found %s after %s",
+                event_time,
+                self.max_time,
+            )
+        self.max_time = max(self.max_time, event_time)
         event_type = e[1]
         logging.info("Input event: %0.03f : %s", event_time, e[1:])
         {
@@ -274,8 +282,8 @@ class Staff:
         score_position = score_pos.ScorePosition(bar_num, bar_pos)
         note = lily_note.Note(
             midi_note,
-            at=note_start * 4 * Staff.CLICKS_PER_BEAT,
-            clicks=float(note_duration) * 4 * Staff.CLICKS_PER_BEAT,
+            at=int(note_start * 4 * Staff.CLICKS_PER_BEAT),
+            clicks=int(float(note_duration) * 4 * Staff.CLICKS_PER_BEAT),
             position=score_position,
         )
 

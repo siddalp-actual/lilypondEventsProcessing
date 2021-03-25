@@ -16,6 +16,8 @@ class Voice:
     """
 
     voice_num = 0
+    # microsecond sacaled by clicks per beat
+    BUSY_BUFFER = 1e-6 * 4 * 384
 
     def __init__(self, parent_staff):
         self.voice_num = Voice.voice_num
@@ -48,7 +50,7 @@ class Voice:
             logging.debug("tieing %s", note.pitch)
             logging.debug("append: %s : %s", self.busy_until, note_start_time)
             assert self.last_note.pitch == note.pitch
-            assert abs(self.busy_until - note_start_time) < 1e-6
+            assert abs(self.busy_until - note_start_time) < Voice.BUSY_BUFFER
             self.last_note.extend(clicks=note.duration)
             self.busy_until += note.duration
             self.last_note_tied = False
@@ -68,7 +70,9 @@ class Voice:
         """
         works out whether a voice would be busy at a particular time
         """
-        if time >= self.busy_until - 1e-6:  # allow a microsecond rounding
+        if (
+            time >= self.busy_until - Voice.BUSY_BUFFER
+        ):  # allow a microsecond rounding
             return False
         return True
 

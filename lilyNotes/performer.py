@@ -51,7 +51,8 @@ class Performer:
 
     def articulate(self, effects):
         """
-        articulate the music according to the requested effects if any
+        articulate the music according to the requested effects if any and
+        return as a list of events
         """
         new_stream = events.TimedList()
 
@@ -82,14 +83,17 @@ class Performer:
 
         logging.info("Performer.articulate finished first pass")
 
-        # Second pass, add the performance effects
+        # Second pass, add the performance effects which may add further
+        # entries in the list, so freeze our initial view
         for event in new_stream:
             if event.is_note():
                 # Now the performer tracks the bar number so where necesary,
                 # rates per beat can be used.
                 self.score_position = event.event.score_position
                 for effect in effects:
-                    effect(self, event.event)  # apply the effect to the note
+                    effect(
+                        self, event.event, new_stream
+                    )  # apply the effect to the note
             else:
                 if event.event[1] == "dynamic":  # volume
                     self.volume = self.note_stream.set_volume(
@@ -166,7 +170,7 @@ class Performer:
     ### The following methods are all note process for articulate
     ###
 
-    def set_volume_for_stream(self, note):
+    def set_volume_for_stream(self, note, unused_stream):
         """
         extract the stream's current volume and push into a note
         """
@@ -180,13 +184,13 @@ class Performer:
         note.set_velocity(self.volume + volume_increment)
 
     @staticmethod
-    def more_staccato(unused_self, note):
+    def more_staccato(unused_self, note, unused_stream):
         """
         a helper function for use with articulate, makes playing less legato
         """
         note.staccato(factor=Performer.STACCATO_ER)
 
-    def stress_beats(self, note):
+    def stress_beats(self, note, unused_stream):
         """
         only Score knows about bar position, but the way to stress a beat
         should be an attribute of the voice and we certainly shouldn't be
@@ -198,14 +202,14 @@ class Performer:
             if abs(float(note.score_position.bar_pos) - stress_pos) < 1e-6:
                 note.accent(stress_pos)  # stress first beat of bar
 
-    def bar_counter(self, unused_note):
+    def bar_counter(self, unused_note, unused_stream):
         """
         checking the effects are driven
         """
         print(self.score_position, self.in_hairpin)
 
     @staticmethod
-    def show_event(unused_self, note):
+    def show_event(unused_self, note, unused_stream):
         """
         what's in the note
         """
@@ -222,19 +226,13 @@ class MidiPerformer(Performer):
     def standard_articulation(self):
         """
         a set of articulation functions for normal use
+        they are applied to the parsed data and the events returned in an
+        event_list
         """
-        return self.articulate(
-            [
-                Performer.set_volume_for_stream,
-                Performer.more_staccato,
-                Performer.stress_beats,
-                MidiPerformer.schedule_midi_events
-                #    Performer.bar_counter,
-                #    Performer.show_event,
-            ]
-        )
+        return self.articulate(self.MIDI_ARTICULATION_FUNCTIONS)
 
-    def schedule_midi_events(self, note):
+    @staticmethod
+    def schedule_midi_events(unused_self, note, stream):
         """
         for each note we need a midi on and midi off event
         """
@@ -242,9 +240,40 @@ class MidiPerformer(Performer):
             return
 
         note_on = mido.Message(**note.as_mido_on_attrs())
-        self.event_list.insert(note.start_time, note_on, event_type="mido-note")
+        stream.insert(note.start_time, note_on, event_type="mido-note")
 
         note_off = mido.Message(**note.as_mido_off_attrs())
-        self.event_list.insert(
+        stream.insert(
             (note.start_time + note.duration), note_off, event_type="mido-note"
         )
+
+    #
+    # NB This class variable must be defined after the routine it refers
+    # to
+    MIDI_ARTICULATION_FUNCTIONS = [
+        # Performer.show_event,
+        Performer.set_volume_for_stream,
+        Performer.more_staccato,
+        Performer.stress_beats,
+        schedule_midi_events,
+        #    Performer.bar_counter,
+    ]
+
+    def to_midi_track(self, function_list=None):
+        """
+        articulate the performance into a midi track
+        """
+        if function_list is None:
+            function_list = MidiPerformer.MIDI_ARTICULATION_FUNCTIONS
+        track = mido.MidiTrack()
+
+        last_time = 0
+        for ev in self.articulate(function_list):
+            if ev.event_type == "mido-note":
+                time_delta = ev.event_time - last_time
+                new_note = ev.event.copy(time=int(time_delta))
+                # print(new_note)
+                track.append(new_note)
+                last_time = ev.event_time
+
+        return track
