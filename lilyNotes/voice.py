@@ -9,6 +9,8 @@ import logging
 
 from lilyNotes import events
 
+logger = logging.getLogger(__name__)
+
 
 class Voice:
     """
@@ -47,8 +49,8 @@ class Voice:
 
         untied_note = False
         if self.last_note_tied:
-            logging.debug("tieing %s", note.pitch)
-            logging.debug("append: %s : %s", self.busy_until, note_start_time)
+            logger.debug("tieing %s", note.pitch)
+            logger.debug("append: %s : %s", self.busy_until, note_start_time)
             assert self.last_note.pitch == note.pitch
             assert abs(self.busy_until - note_start_time) < Voice.BUSY_BUFFER
             self.last_note.extend(clicks=note.duration)

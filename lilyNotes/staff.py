@@ -8,6 +8,8 @@ import logging
 import re
 from lilyNotes import note as lily_note, voice, performer, score_pos
 
+logger = logging.getLogger(__name__)
+
 
 class TieException(Exception):
     """
@@ -57,14 +59,14 @@ class Staff:
         """
         event_time = float(e[0])
         if event_time < self.max_time:
-            logging.error(
+            logger.error(
                 "notes file times not in sequence, found %s after %s",
                 event_time,
                 self.max_time,
             )
         self.max_time = max(self.max_time, event_time)
         event_type = e[1]
-        logging.info("Input event: %0.03f : %s", event_time, e[1:])
+        logger.info("Input event: %0.03f : %s", event_time, e[1:])
         {
             "note": self.process_note,
             "tempo": self.process_tempo,
@@ -82,7 +84,7 @@ class Staff:
         """
         flag up an error
         """
-        logging.warning("event not recognised: %s at %s=%ss", e[1], time, e[0])
+        logger.warning("event not recognised: %s at %s=%ss", e[1], time, e[0])
 
     def broadcast_to_current_voices(self, event_time, event_info):
         click_time = event_time * 4 * Staff.CLICKS_PER_BEAT
@@ -105,13 +107,13 @@ class Staff:
         initially, we test for voices with pending ties
         """
         # does this note match a tied voice?
-        logging.debug("find_free_voice at %s for %s", start_time, note_info)
+        logger.debug("find_free_voice at %s for %s", start_time, note_info)
         if not note_info.is_rest() and self.tied_voices_set:
-            logging.debug("find_free: tied %s", self.tied_voices_set)
-            logging.debug("find_free: all %s", self.voices)
+            logger.debug("find_free: tied %s", self.tied_voices_set)
+            logger.debug("find_free: all %s", self.voices)
             for v in self.tied_voices_set:
                 if v.tie_start_bar + 2 <= note_info.score_position.bar_number():
-                    logging.debug(
+                    logger.debug(
                         "find_free: *TIE* at bar %d %s tie started in %d",
                         note_info.score_position.bar_number(),
                         v,
@@ -119,12 +121,12 @@ class Staff:
                     )
                     raise TieException  # can't tie through a whole bar
                 if note_info.pitch == v.last_note.pitch:
-                    logging.debug("returning tied voice %s", v)
+                    logger.debug("returning tied voice %s", v)
                     return v
 
         for v in self.voices:
             if v.is_busy(start_time):
-                logging.debug(
+                logger.debug(
                     "voice %d busy until %s", v.voice_num, v.busy_until
                 )
                 continue
@@ -136,7 +138,7 @@ class Staff:
 
         try:
             v
-            logging.debug(
+            logger.debug(
                 "find_free: loop returned %d %s %d",
                 v.voice_num,
                 v.busy_until,
@@ -144,7 +146,7 @@ class Staff:
             )
         except NameError:
             return self.create_new_voice()
-        logging.debug(f"find free: thinking about {v.voice_num}")
+        logger.debug("find free: thinking about %s", v.voice_num)
         if (
             v.is_busy(start_time)
             or v.last_note_tied
@@ -198,7 +200,7 @@ class Staff:
         elif int(e[2]) == 1:
             self.last_voice.end_slur()
         else:
-            logging.error(f"slur: unexpected arg {e[2]}")
+            logger.error("slur: unexpected arg %s", e[2])
 
     def process_tie(self, unused_note_start, unused_e):
         """
@@ -207,8 +209,8 @@ class Staff:
         by an amound given by the next note of the same pitch
         """
         self.last_voice.prep_tie()
-        logging.debug(
-            f"tie for {self.last_voice} {self.last_voice.last_note.pitch}"
+        logger.debug(
+            "tie for %s %s", self.last_voice, self.last_voice.last_note.pitch
         )
         self.tied_voices_set.add(self.last_voice)
 
@@ -289,8 +291,8 @@ class Staff:
 
         use_voice = self.find_free_voice(note.start_time, note)
         if use_voice.last_note_tied:
-            logging.info(
-                f"using tied voice: {use_voice} {use_voice.last_note.pitch}"
+            logger.info(
+                "using tied voice: %s %s", use_voice, use_voice.last_note.pitch
             )
         voice_untied = use_voice.append(note.start_time, note)
         if voice_untied:

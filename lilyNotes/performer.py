@@ -12,6 +12,8 @@ import mido
 
 from lilyNotes import voice, events
 
+logger = logging.getLogger(__name__)
+
 
 class Performer:
     """
@@ -81,7 +83,7 @@ class Performer:
             if not event_added:
                 new_stream.append(event.event_time, new_event, event.event_type)
 
-        logging.info("Performer.articulate finished first pass")
+        logger.info("Performer.articulate finished first pass")
 
         # Second pass, add the performance effects which may add further
         # entries in the list, so freeze our initial view
@@ -111,7 +113,7 @@ class Performer:
                         6: [0, 0.5],
                         8: [0, 0.5],
                     }[self.beats_per_bar]
-                    logging.info(
+                    logger.info(
                         "performer sees time-sig %s %s",
                         self.beats_per_bar,
                         self.beat_structure,
@@ -152,7 +154,7 @@ class Performer:
         # looks like some transient voices may get a hairpin of
         # 0 beats ????
         hairpin_beats = max(hairpin_beats, 1)
-        logging.info(
+        logger.info(
             "end_hairpin sees: start %s:%s end %s,%s",
             hairpin_start,
             hairpin_start_volume,
@@ -255,7 +257,7 @@ class MidiPerformer(Performer):
         Performer.set_volume_for_stream,
         Performer.more_staccato,
         Performer.stress_beats,
-        schedule_midi_events,
+        schedule_midi_events.__func__,
         #    Performer.bar_counter,
     ]
 
