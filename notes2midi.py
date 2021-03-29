@@ -8,14 +8,11 @@ this is then transformed to midi events which are written out to a
 """
 import argparse
 import glob
-import lilyNotes
 import logging
 import os
-import re
 import sys
 
-NOTES_FILE = re.compile(r"\/([^/.]+\.notes)")
-NOTES_STAFF = re.compile(r"([^.-]+)-(.+).notes")
+import lilyNotes
 
 
 def read_args():
@@ -74,44 +71,6 @@ def start_logging(log_level):
     )
 
 
-def parse_file_name(name):
-    """
-    break the file name down into its stem and staff components.
-    event-listener builds file names of the form:
-    stem-staff.notes where stem.ly was the input file
-                           staff maybe unnamed-staff
-    """
-    matchoptions = NOTES_FILE.search(name)
-    if matchoptions:
-        logger.info("parse_file > found %s", matchoptions[1])
-        notes_file = matchoptions[1]
-        staff_match = NOTES_STAFF.match(notes_file)
-        if not staff_match:
-            # What's gone wrong, a .notes file must have a file part and a
-            # staff part
-            logger.error("** parse_file > %s", notes_file)
-            raise ValueError
-        logger.info(
-            "parse_file > stem: %s staff: %s", staff_match[1], staff_match[2]
-        )
-        return staff_match[1], staff_match[2]
-
-    logger.error("** parse_file > name :%s: doesn't match pattern", name)
-    raise ValueError
-
-
-def build_file_map(file_list):
-    """
-    decompose the files into a set of stems, staves and their associated files
-    """
-    file_map = {}
-    for file_name in file_list:
-        stem, staff = parse_file_name(file_name)
-        file_map.setdefault(stem, {})[staff] = file_name
-        logger.info("build_map: %s", file_map)
-    return file_map
-
-
 def disambiguate_which_notes(mapping):
     """
     show the files to the person and discuss which one to work on
@@ -142,11 +101,15 @@ logger.info("found files: %s", files)
 if len(files) == 0:
     print("No .notes files to process, terminating")
     sys.exit(4)
-notes_map = build_file_map(files)
+notes_map = lilyNotes.score.Score.build_file_map(files)
 if len(notes_map) == 1:
     index = list(notes_map.keys())[0]
 else:
     index = disambiguate_which_notes(notes_map)
-logger.info("working with %s", index)
-for staff in list(notes_map[index].keys()):
-    lily_staff = lilyNotes.staff.Staff(notes_map[index][staff])
+work_files = {k: notes_map[k] for k in [index]}
+logger.info("working with %s subset", work_files)
+
+music = lilyNotes.score.Score(work_files)
+
+file = music.to_midi()
+file.save(f"./{music.get_stem()}.midi")

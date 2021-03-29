@@ -6,7 +6,7 @@
 """
 import logging
 import re
-from lilyNotes import note as lily_note, voice, performer, score_pos
+from lilyNotes import note as lily_note, voice, score_pos
 
 logger = logging.getLogger(__name__)
 
@@ -23,25 +23,19 @@ class Staff:
     """
 
     WHITESPACE = re.compile(r"\s+")
-    TIME_LAPSE = 1.0
     CLICKS_PER_BEAT = 384  # 2**8 * 3
 
-    def __init__(self, filename):
+    def __init__(self, filename, parent=None):
         self.voices = []
+        self.parent = parent
         self.last_voice = None
         self.tied_voices_set = set([])
-        self.tempo = Staff.TIME_LAPSE
         self.beat_structure = [0]
         self.beats_per_bar = 0
         self.max_time = 0
         with open(filename, "r") as f:
             for line in f:
                 self.process(line)
-
-        self.performance = []
-        for each_voice in self.voices:
-            perf = performer.Performer(each_voice)
-            self.performance.append(perf.standard_articulation())
 
     def process(self, l):
         """
@@ -126,9 +120,7 @@ class Staff:
 
         for v in self.voices:
             if v.is_busy(start_time):
-                logger.debug(
-                    "voice %d busy until %s", v.voice_num, v.busy_until
-                )
+                logger.debug("voice %d busy until %s", v.voice_num, v.busy_until)
                 continue
 
             if v.last_note_tied:
@@ -209,9 +201,7 @@ class Staff:
         by an amound given by the next note of the same pitch
         """
         self.last_voice.prep_tie()
-        logger.debug(
-            "tie for %s %s", self.last_voice, self.last_voice.last_note.pitch
-        )
+        logger.debug("tie for %s %s", self.last_voice, self.last_voice.last_note.pitch)
         self.tied_voices_set.add(self.last_voice)
 
     def process_tempo(self, unused_note_start, e):
@@ -241,9 +231,9 @@ class Staff:
         ## code currently assumes only one tempo event at the start
 
         new_tempo = float(e[2])
-        self.tempo = 240 / new_tempo * 1e6
+        self.parent.set_tempo(240 / new_tempo * 1e6)
 
-        # for a piece which changes tempo, would need to create and event
+        # for a piece which changes tempo, would need to create an event
         # to output a midi meta message for tempo change.
 
     def process_rest(self, note_start, e):
@@ -291,9 +281,7 @@ class Staff:
 
         use_voice = self.find_free_voice(note.start_time, note)
         if use_voice.last_note_tied:
-            logger.info(
-                "using tied voice: %s %s", use_voice, use_voice.last_note.pitch
-            )
+            logger.info("using tied voice: %s %s", use_voice, use_voice.last_note.pitch)
         voice_untied = use_voice.append(note.start_time, note)
         if voice_untied:
             self.tied_voices_set.remove(use_voice)
