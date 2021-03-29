@@ -90,7 +90,7 @@ class Score:
         return_var = mido.MidiTrack()
         for key in self.meta:
             meta_msg = mido.MetaMessage(key, **self.meta[key])
-            logger.debug("build_track_zero: %s", **self.meta[key])
+            logger.debug("build_track_zero: %s", self.meta[key])
             return_var.append(meta_msg)
         return return_var
 
