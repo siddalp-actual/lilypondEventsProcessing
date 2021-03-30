@@ -105,48 +105,60 @@ class Staff:
         if not note_info.is_rest() and self.tied_voices_set:
             logger.debug("find_free: tied %s", self.tied_voices_set)
             logger.debug("find_free: all %s", self.voices)
-            for v in self.tied_voices_set:
-                if v.tie_start_bar + 2 <= note_info.score_position.bar_number():
+            for tied_voice in self.tied_voices_set:
+                if (
+                    tied_voice.tie_start_bar + 2
+                    <= note_info.score_position.bar_number()
+                ):
                     logger.debug(
                         "find_free: *TIE* at bar %d %s tie started in %d",
                         note_info.score_position.bar_number(),
-                        v,
-                        v.tie_start_bar,
+                        tied_voice,
+                        tied_voice.tie_start_bar,
                     )
                     raise TieException  # can't tie through a whole bar
-                if note_info.pitch == v.last_note.pitch:
-                    logger.debug("returning tied voice %s", v)
-                    return v
+                if (
+                    note_info.pitch == tied_voice.last_note.pitch
+                    and start_time >= tied_voice.busy_until
+                ):
+                    logger.debug("returning tied voice %s", tied_voice)
+                    return tied_voice
 
-        for v in self.voices:
-            if v.is_busy(start_time):
-                logger.debug("voice %d busy until %s", v.voice_num, v.busy_until)
+        a_voice = None
+        for a_voice in self.voices:
+            if a_voice.is_busy(start_time):
+                logger.debug(
+                    "voice %d busy until %s",
+                    a_voice.voice_num,
+                    a_voice.busy_until,
+                )
                 continue
 
-            if v.last_note_tied:
-                if note_info.pitch != v.last_note.pitch:
+            if a_voice.last_note_tied:
+                if note_info.pitch != a_voice.last_note.pitch:
                     continue
             break  # I want to come out with the FIRST voice available
 
-        try:
-            v
-            logger.debug(
-                "find_free: loop returned %d %s %d",
-                v.voice_num,
-                v.busy_until,
-                v.last_note.pitch if v.last_note_tied else 0,
-            )
-        except NameError:
-            return self.create_new_voice()
-        logger.debug("find free: thinking about %s", v.voice_num)
+        #        try:
+        #            a_voice
+        #            logger.debug(
+        #                "find_free: loop returned %d %s %d",
+        #                a_voice.voice_num,
+        #                a_voice.busy_until,
+        #                a_voice.last_note.pitch if v.last_note_tied else 0,
+        #            )
+        #        except NameError:
+        #            return self.create_new_voice()
+        logger.debug("find free: thinking about %s", a_voice)
         if (
-            v.is_busy(start_time)
-            or v.last_note_tied
-            and v.last_note.pitch != note_info.pitch
+            a_voice is None
+            or a_voice.is_busy(start_time)
+            or a_voice.last_note_tied
+            and a_voice.last_note.pitch != note_info.pitch
         ):
             return self.create_new_voice()
 
-        return v
+        return a_voice
 
     def process_hairpin_start(self, start_time, e):
         """
@@ -201,7 +213,9 @@ class Staff:
         by an amound given by the next note of the same pitch
         """
         self.last_voice.prep_tie()
-        logger.debug("tie for %s %s", self.last_voice, self.last_voice.last_note.pitch)
+        logger.debug(
+            "tie for %s %s", self.last_voice, self.last_voice.last_note.pitch
+        )
         self.tied_voices_set.add(self.last_voice)
 
     def process_tempo(self, unused_note_start, e):
@@ -281,7 +295,9 @@ class Staff:
 
         use_voice = self.find_free_voice(note.start_time, note)
         if use_voice.last_note_tied:
-            logger.info("using tied voice: %s %s", use_voice, use_voice.last_note.pitch)
+            logger.info(
+                "using tied voice: %s %s", use_voice, use_voice.last_note.pitch
+            )
         voice_untied = use_voice.append(note.start_time, note)
         if voice_untied:
             self.tied_voices_set.remove(use_voice)
