@@ -189,8 +189,9 @@ class Staff:
             2: [0],
             3: [0],
             4: [0],
-            6: [0, 0.5],
+            6: [0, 0.375],
             8: [0, 0.5],
+            9: [0, 0.375, 0.75],
         }[self.beats_per_bar]
 
     def process_slur(self, unused_note_start, e):
