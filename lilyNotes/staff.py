@@ -106,17 +106,20 @@ class Staff:
             logger.debug("find_free: tied %s", self.tied_voices_set)
             logger.debug("find_free: all %s", self.voices)
             for tied_voice in self.tied_voices_set:
-                if (
-                    tied_voice.tie_start_bar + 2
-                    <= note_info.score_position.bar_number()
-                ):
-                    logger.debug(
-                        "find_free: *TIE* at bar %d %s tie started in %d",
-                        note_info.score_position.bar_number(),
-                        tied_voice,
-                        tied_voice.tie_start_bar,
-                    )
-                    raise TieException  # can't tie through a whole bar
+                # This was a good test of the concept for tieing, but I've now
+                # found pieces where the initial note is tied through multiple
+                # succesive ones.
+                # if (
+                #     tied_voice.tie_start_bar + 2
+                #     <= note_info.score_position.bar_number()
+                # ):
+                #     logger.debug(
+                #         "find_free: *TIE* at bar %d %s tie started in %d",
+                #         note_info.score_position.bar_number(),
+                #         tied_voice,
+                #         tied_voice.tie_start_bar,
+                #     )
+                #     raise TieException  # can't tie through a whole bar
                 if (
                     note_info.pitch == tied_voice.last_note.pitch
                     and start_time >= tied_voice.busy_until
