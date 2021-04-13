@@ -13,7 +13,7 @@ logging.basicConfig(  # filename='example.log',
     encoding="utf-8",
     force=True,
     format="%(asctime)s:%(levelname)s:%(name)s:%(message)s",
-    level=logging.DEBUG,
+    # level=logging.DEBUG,
 )
 
 logger = logging.getLogger(__name__)
@@ -121,7 +121,7 @@ class TestStuff(unittest.TestCase):
         """
         the bar position can now be greater than 1
         """
-        position = lilyNotes.score_pos.ScorePosition(1, 1.125)  # 9 beats
+        position = lilyNotes.score_pos.ScorePosition(1, 1.00)  # 8 beats
         position.set_time_signature(9, 8)
         self.assertEqual(
             lilyNotes.score_pos.ScorePosition(0, 0.125).as_beats(), 1
@@ -129,13 +129,13 @@ class TestStuff(unittest.TestCase):
         self.assertEqual(
             lilyNotes.score_pos.ScorePosition(0, 1.000).as_beats(), 8
         )
-        self.assertEqual(position.as_beats(), 18)
+        self.assertEqual(position.as_beats(), 17)
         self.assertEqual(
             (
                 lilyNotes.score_pos.ScorePosition.from_array([2, 0.125])
                 - position
             ).as_beats(),
-            1,
+            2,
         )
 
 
