@@ -105,7 +105,9 @@ class Performer:
 
                 if event.event[1] == "time-sig":
                     self.beats_per_bar = int(event.event[2])
-                    self.score_position.set_beats_per_bar(event.event[2])
+                    self.score_position.set_time_signature(
+                        event.event[2], event.event[3]
+                    )
                     self.beat_structure = {
                         2: [0],
                         3: [0],
