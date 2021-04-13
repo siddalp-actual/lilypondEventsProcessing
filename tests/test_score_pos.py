@@ -1,12 +1,22 @@
 """
 some unit tests to verify the ScorePosition class
 """
+import logging
 import sys
 import unittest
 
 sys.path.append("../")
 
 import lilyNotes.score_pos
+
+logging.basicConfig(  # filename='example.log',
+    encoding="utf-8",
+    force=True,
+    format="%(asctime)s:%(levelname)s:%(name)s:%(message)s",
+    level=logging.DEBUG,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class TestStuff(unittest.TestCase):
@@ -35,7 +45,7 @@ class TestStuff(unittest.TestCase):
         """
         beats per bar
         """
-        thing = lilyNotes.score_pos.ScorePosition(1, 1 / 3)
+        thing = lilyNotes.score_pos.ScorePosition(1, 1 / 4)
         thing.set_beats_per_bar(3)
         self.assertEqual(lilyNotes.score_pos.ScorePosition.beats_per_bar, 3)
         self.assertEqual(thing.as_beats(), 4)
@@ -56,16 +66,22 @@ class TestStuff(unittest.TestCase):
         """
         test the subtraction operator
         """
-        thing_a = lilyNotes.score_pos.ScorePosition(1, 0.5)
-        thing_b = lilyNotes.score_pos.ScorePosition(0, 0.5)
-        # print((thing_a - thing_b).as_array())
+        thing_a = lilyNotes.score_pos.ScorePosition(1, 0.5)  # 6 beats
+        thing_a.set_time_signature(4, 4)
+        thing_b = lilyNotes.score_pos.ScorePosition(0, 0.5)  # 2 beats
+        logger.info((thing_a - thing_b).as_array())
         self.assertEqual(
-            thing_a - thing_b, lilyNotes.score_pos.ScorePosition(1, 0)
+            thing_a - thing_b,
+            lilyNotes.score_pos.ScorePosition(1, 0),  # 4 beats
         )
         # here we check a carry
-        thing_c = lilyNotes.score_pos.ScorePosition(0, 0.75)
+        # thing c is 1 beat more than thing_b, so we expect the anwer to be
+        # 1 beat less.
+        thing_c = lilyNotes.score_pos.ScorePosition(0, 0.75)  # 3 beats
+        logger.info(thing_a - thing_c)
         self.assertEqual(
-            thing_a - thing_c, lilyNotes.score_pos.ScorePosition(0, 0.75)
+            thing_a - thing_c,
+            lilyNotes.score_pos.ScorePosition(0, 0.75),  # 3 beats
         )
 
     def test05_component(self):
@@ -87,8 +103,40 @@ class TestStuff(unittest.TestCase):
         hairpin_end = lilyNotes.score_pos.ScorePosition(52, 0.0)
         hairpin_end.set_beats_per_bar(4)
         hairpin_start = lilyNotes.score_pos.ScorePosition(47, 0.75)
-        print((hairpin_end - hairpin_start))
-        print((hairpin_end - hairpin_start).as_beats())
+        logger.info((hairpin_end - hairpin_start))
+        logger.info((hairpin_end - hairpin_start).as_beats())
+
+    def test08_6_8_time(self):
+        """
+        There are 6 eighth notes to a bar
+        """
+        hairpin_end = lilyNotes.score_pos.ScorePosition(52, 0.375)
+        hairpin_end.set_time_signature(6, 8)
+        hairpin_start = lilyNotes.score_pos.ScorePosition(51, 0.0)
+        diff = hairpin_end - hairpin_start
+        logger.info(diff)
+        self.assertEqual(diff.as_beats(), 9)
+
+    def test09_9_8_time(self):
+        """
+        the bar position can now be greater than 1
+        """
+        position = lilyNotes.score_pos.ScorePosition(1, 1.125)  # 9 beats
+        position.set_time_signature(9, 8)
+        self.assertEqual(
+            lilyNotes.score_pos.ScorePosition(0, 0.125).as_beats(), 1
+        )
+        self.assertEqual(
+            lilyNotes.score_pos.ScorePosition(0, 1.000).as_beats(), 8
+        )
+        self.assertEqual(position.as_beats(), 18)
+        self.assertEqual(
+            (
+                lilyNotes.score_pos.ScorePosition.from_array([2, 0.125])
+                - position
+            ).as_beats(),
+            1,
+        )
 
 
 def do_tests():

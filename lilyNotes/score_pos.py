@@ -3,6 +3,10 @@ internal used by lilyNotes classes.
 Defines the ScorePosition class
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ScorePosition:
     """
@@ -10,7 +14,8 @@ class ScorePosition:
     plus some arithmetic operations
     """
 
-    beats_per_bar = 4
+    beats_per_bar = 4  # time sig numerator
+    beats_per_whole_note = 4  # time sig denominator
 
     def __init__(self, bar_num, bar_pos):
         """
@@ -37,7 +42,10 @@ class ScorePosition:
         """
         return a number of beats
         """
-        return (self.bar_num + self.bar_pos) * ScorePosition.beats_per_bar
+        return (
+            self.bar_num * ScorePosition.beats_per_bar
+            + self.bar_pos * ScorePosition.beats_per_whole_note
+        )
 
     def bar_number(self):
         """
@@ -53,6 +61,14 @@ class ScorePosition:
         cls.beats_per_bar = int(beats)
         assert cls.beats_per_bar != 0
 
+    @classmethod
+    def set_time_signature(cls, numerator, denominator):
+        """
+        sets both the beats per bar and type of beat
+        """
+        cls.beats_per_bar = int(numerator)
+        cls.beats_per_whole_note = int(denominator)
+
     def __str__(self):
         """
         what it looks like
@@ -66,8 +82,14 @@ class ScorePosition:
         new_bar = self.bar_num - other.bar_num
         new_pos = self.bar_pos - other.bar_pos
         # handle a borrow
+        logger.debug(
+            "time signature %s / %s %s",
+            self.beats_per_bar,
+            self.beats_per_whole_note,
+            self.beats_per_bar / self.beats_per_whole_note,
+        )
         if new_pos < 0:
-            new_pos += 1
+            new_pos += self.beats_per_bar / self.beats_per_whole_note
             new_bar -= 1
         return ScorePosition(new_bar, new_pos)
 
