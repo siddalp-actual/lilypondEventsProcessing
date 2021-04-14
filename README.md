@@ -3,17 +3,20 @@ Towards better midi output from LilyPond transcriptions.
 
 I have extended the sample lilypond event listener and built python code to transform the output lilypond 'events' into midi.
 
-Contents:
+## Contents:  
 lilyNotes        : a python package containing events partser and classes to
                    assist with transforming into a chronological sequence of
-                   note-on, note-off midi events.
+                   note-on, note-off midi events.  
 ly/
   petes-event-listener.ly : an extension of the lilypond provided
-                   event-listener.ly
+                   event-listener.ly  
 
-tests/           : unit tests
+tests/           : unit tests  
 
 notebookScript/
   Lilypond Notes to mid.py : Jupyter note book with commentary and sample
                    python code to use the above classes to create a midi file.
-                   (I use JupyText to split the notebook into input and output)                      
+                   (I use JupyText to split the notebook into input and output)   
+                   
+notes2midi.py    : a top level utility which locates a .notes file and uses the 
+                   lilyNotes and [Mido](https://mido.readthedocs.io/en/latest/index.html) packages to generate a midi file 
