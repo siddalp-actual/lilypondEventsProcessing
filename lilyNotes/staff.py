@@ -23,6 +23,7 @@ class Staff:
     """
 
     WHITESPACE = re.compile(r"\s+")
+    WEIRD_BREVE_REPRESENTATION = re.compile(r"log = -1")
     CLICKS_PER_BEAT = 384  # 2**8 * 3
 
     def __init__(self, filename, parent=None):
@@ -37,12 +38,13 @@ class Staff:
             for line in f:
                 self.process(line)
 
-    def process(self, l):
+    def process(self, raw_line):
         """
         handle a line from the notes file
         split it into a bunch of fields representing the event
         """
-        fields = Staff.WHITESPACE.split(l)
+        munged_line = Staff.WEIRD_BREVE_REPRESENTATION.sub("0.5", raw_line)
+        fields = Staff.WHITESPACE.split(munged_line)
         self.process_event(fields)
 
     def process_event(self, e):
